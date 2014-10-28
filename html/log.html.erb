@@ -1,0 +1,40 @@
+<!-- This is a stub for the body of the log page -->
+
+<div class="page-header">
+  <h1>Log</h1>
+</div>
+
+<!-- Assume all run in same year/month/day. and give the full spec on when started and when ended -->
+
+<!-- Have last two columns be the timestamp -->
+<!-- Have the first column (if not title) be a label of the   -->
+<!-- If COMMAND_OUT, then only show the first one label and leave the rest blank -->
+<!-- if encounter a command, then indent everything that comes later? or maybe even have something to easily collapse the stuff under command -->
+<!-- and of course display the msg -->
+
+<h2>TITLE</h2>
+
+<div class="row">
+  <div class="col-md-6">
+    <a href="<%= @anat.mask_prefix %>_axial.png" data-lightbox="brain_mask" data-title="Brain mask, axial slices">
+      <img src="<%= @anat.mask_prefix %>_axial.png" alt="brain mask, axial" class="img-rounded img-responsive">
+    </a>
+  </div>
+  <div class="col-md-6">
+    <a href="<%= @anat.mask_prefix %>_sagittal.png" data-lightbox="brain_mask" data-title="Brain mask, sagittal slices">
+      <img src="<%= @anat.mask_prefix %>_sagittal.png" alt="brain mask, sagittal" class="img-rounded img-responsive">
+    </a>
+  </div>
+</div>
+
+    DEBUG = 0
+    INFO = 1
+    COMMAND_OUT = 2
+    COMMAND = 3
+    TITLE = 4
+    WARN = 5
+    ERROR = 6
+    FATAL = 7
+    UNKNOWN = 8
+
+{"time":"2014-10-26T21:54:31.023Z","level":"COMMAND_OUT","level_id":2,"progname":"3dQwarp","msg":"++ AFNI warpomatic start: 184 x 228 x 201 volume ; autobbox = 16..167 19..207 15..176"}

@@ -1,0 +1,25 @@
+<!-- This is a stub for the body of skull-strip (anatomical) page -->
+
+<div class="page-header">
+  <h1>Skull-Strip <small>with FSL</small></h1>
+</div>
+
+
+<h2>Brain Mask Overlaid on Head</h2>
+
+<div class="row">
+  <div class="col-md-6">
+    <a href="<%= @anat.mask_prefix %>_axial.png" data-lightbox="brain_mask" data-title="Brain mask, axial slices">
+      <img src="<%= @anat.mask_prefix %>_axial.png" alt="brain mask, axial" class="img-rounded img-responsive">
+    </a>
+    <br />
+    <a href="<%= @anat.mask_prefix %>_axial.png" target="_blank">Open full-size image in new window</a>
+  </div>
+  <div class="col-md-6">
+    <a href="<%= @anat.mask_prefix %>_sagittal.png" data-lightbox="brain_mask" data-title="Brain mask, sagittal slices">
+      <img src="<%= @anat.mask_prefix %>_sagittal.png" alt="brain mask, sagittal" class="img-rounded img-responsive">
+    </a>
+    <br />
+    <a href="<%= @anat.mask_prefix %>_sagittal.png" target="_blank">Open full-size image in new window</a>    
+  </div>
+</div>

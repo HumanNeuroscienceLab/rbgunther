@@ -1,0 +1,83 @@
+cd /mnt/nfs/psych/faceMemoryMRI/analysis/test_preproc/tb9226/anat
+antsCorticalThickness.sh -d 3 -a head.nii.gz -o ants/act \
+  -e /mnt/nfs/share/OASIS-30_Atropos_template/T_template0.nii.gz \
+  -t /mnt/nfs/share/OASIS-30_Atropos_template/T_template0_BrainCerebellum.nii.gz \
+  -m /mnt/nfs/share/OASIS-30_Atropos_template/T_template0_BrainCerebellumProbabilityMask.nii.gz \
+  -f /mnt/nfs/share/OASIS-30_Atropos_template/T_template0_BrainCerebellumExtractionMask.nii.gz \
+  -p /mnt/nfs/share/OASIS-30_Atropos_template/Priors2/priors%d.nii.gz
+
+
+----------
+
+
+# set directory variables
+set surface_dir = /data0/stsbatt/analysis/misc/freesurfer/tb6503/SUMA
+
+# align the surface anatomy with the current experiment anatomy
+@SUMA_AlignToExperiment -exp_anat anat_final.$subj+orig             \
+                        -surf_anat $surface_dir/tb6503_SurfVol+orig \
+                        -wd -strip_skull surf_anat                  \
+                        -atlas_followers -overwrite_resp S          \
+                        -prefix ${subj}_SurfVol_Alnd_Exp 
+
+# map volume data to the surface of each hemisphere
+foreach hemi ( lh rh )
+    foreach run ( $runs )
+        3dVol2Surf -spec $surface_dir/std.141.tb6503_${hemi}.spec   \
+                   -sv ${subj}_SurfVol_Alnd_Exp+orig                \
+                   -surf_A smoothwm                                 \
+                   -surf_B pial                                     \
+                   -f_index nodes                                   \
+                   -f_steps 10                                      \
+                   -map_func ave                                    \
+                   -oob_value 0                                     \
+                   -grid_parent pb01.$subj.r$run.volreg+orig        \
+                   -out_niml pb02.$subj.$hemi.r$run.surf.niml.dset 
+    end
+end
+
+
+echo suma -spec $surface_dir/std.141.tb6503_lh.spec                 \
+          -sv ${subj}_SurfVol_Alnd_Exp+orig > run_suma
+
+# =========================== blur (on surface) ============================
+foreach hemi ( lh rh )
+    foreach run ( $runs )
+        # to save time, estimate blur parameters only once
+        if ( ! -f surf.smooth.params.1D ) then
+            SurfSmooth -spec $surface_dir/std.141.tb6503_${hemi}.spec    \
+                       -surf_A smoothwm                                  \
+                       -input pb02.$subj.$hemi.r$run.surf.niml.dset      \
+                       -met HEAT_07                                      \
+                       -target_fwhm 3.0                                  \
+                       -blurmaster pb02.$subj.$hemi.r$run.surf.niml.dset \
+                       -detrend_master                                   \
+                       -output pb03.$subj.$hemi.r$run.blur.niml.dset     \
+                       | tee surf.smooth.params.1D 
+        else
+            set params = `1dcat surf.smooth.params.1D`
+            SurfSmooth -spec $surface_dir/std.141.tb6503_${hemi}.spec    \
+                       -surf_A smoothwm                                  \
+                       -input pb02.$subj.$hemi.r$run.surf.niml.dset      \
+                       -met HEAT_07                                      \
+                       -Niter $params[1]                                 \
+                       -sigma $params[2]                                 \
+                       -output pb03.$subj.$hemi.r$run.blur.niml.dset 
+        endif
+    end
+end
+
+# ================================= scale ==================================
+# scale each voxel time series to have a mean of 100
+# (be sure no negatives creep in)
+# (subject to a range of [0,200])
+foreach hemi ( lh rh )
+    foreach run ( $runs )
+        3dTstat -prefix rm.$hemi.mean_r$run.niml.dset    \
+            pb03.$subj.$hemi.r$run.blur.niml.dset
+        3dcalc -a pb03.$subj.$hemi.r$run.blur.niml.dset  \
+               -b rm.$hemi.mean_r$run.niml.dset          \
+               -expr 'min(200, a/b*100)*step(a)*step(b)' \
+               -prefix pb04.$subj.$hemi.r$run.scale.niml.dset
+    end
+end

@@ -1,0 +1,68 @@
+<!-- This is a stub for the body of the motion (functional) page -->
+
+<div class="page-header">
+  <h1>Summary Motion Correction <small>Relative Mean Displacement (mm)</small></h1>
+</div>
+
+<% runs.each_with_index do |run, ri| %>
+  <% padrun = "%02i" % run %>
+
+  <h2>Run <%= run %></h2>
+  
+  <div class="row">
+    <div class="col-md-8">
+      <a href="<%= @func.mc.prefix %>_run<%= padrun %>_plot_fd_rel.png" data-lightbox="rel-plot" data-title="Run <%= run %>, Relative Mean Displacemt (mm)">
+        <img src="<%= @func.mc.prefix %>_run<%= padrun %>_plot_fd_rel.png" alt="Run <%= run %>, Relative Mean Displacement (mm)" class="img-rounded img-responsive">
+      </a>
+    </div>
+  </div>
+  
+<% end %>
+
+
+<div class="page-header">
+  <h1>Motion Correction <small>with 3dvolreg</small></h1>
+</div>
+
+<% runs.each_with_index do |run, ri| %>
+  <% padrun = "%02i" % run %>
+
+  <h2>Run <%= run %></h2>
+  
+  <h3>Translations (mm)</h3>
+  <div class="row">
+    <div class="col-md-8">
+      <a href="<%= @func.mc.prefix %>_run<%= padrun %>_plot_trans.png" data-lightbox="plot" data-title="Run <%= run %>, Translations (mm)">
+        <img src="<%= @func.mc.prefix %>_run<%= padrun %>_plot_trans.png" alt="Run <%= run %>, Translations (mm)" class="img-rounded img-responsive">
+      </a>
+    </div>
+  </div>
+  
+  <h3>Rotations (radians)</h3>
+  <div class="row">
+    <div class="col-md-8">
+      <a href="<%= @func.mc.prefix %>_run<%= padrun %>_plot_rot.png" data-lightbox="plot" data-title="Run <%= run %>, Rotations (radians)">
+        <img src="<%= @func.mc.prefix %>_run<%= padrun %>_plot_rot.png" alt="Run <%= run %>, Rotations (radians)" class="img-rounded img-responsive">
+      </a>
+    </div>
+  </div>
+  
+  <h3>Mean (Framewise) Displacement (mm)</h3>
+  <h4>Absolute</h4>
+  <div class="row">
+    <div class="col-md-8">
+      <a href="<%= @func.mc.prefix %>_run<%= padrun %>_plot_fd_abs.png" data-lightbox="plot" data-title="Run <%= run %>, Absolute Mean Displacemt (mm)">
+        <img src="<%= @func.mc.prefix %>_run<%= padrun %>_plot_fd_abs.png" alt="Run <%= run %>, Absolute Mean Displacement (mm)" class="img-rounded img-responsive">
+      </a>
+    </div>
+  </div>
+  <h4>Relative</h4>
+  <div class="row">
+    <div class="col-md-8">
+      <a href="<%= @func.mc.prefix %>_run<%= padrun %>_plot_fd_rel.png" data-lightbox="plot" data-title="Run <%= run %>, Relative Mean Displacemt (mm)">
+        <img src="<%= @func.mc.prefix %>_run<%= padrun %>_plot_fd_rel.png" alt="Run <%= run %>, Relative Mean Displacement (mm)" class="img-rounded img-responsive">
+      </a>
+    </div>
+  </div>
+  
+<% end %>

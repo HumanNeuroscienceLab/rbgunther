@@ -1,0 +1,41 @@
+<!-- This is a stub for the body of registration (anatomical) page -->
+
+<div class="page-header">
+  <h1>Registration <small>with AFNI</small></h1>
+</div>
+
+
+<h2>Non-Linear with 3dQWarp</h2>
+
+<p class="lead">
+  The first row of images shows the highres subject-specific brain as the underlay and the standard brain as the (red) edge overlay. The second row is the inverse with the standard image as the underlay and the highres as the overlay.
+  
+  Registration was done with AFNI's 3dAllineate (linear) and 3dQWarp (non-linear).
+</p>
+
+<div class="row">
+  <div class="col-md-12">
+    <a href="<%= @anat.regdir %>/highres2standard.png" data-lightbox="registration" data-title="Non-Linear Registration">
+      <img src="<%= @anat.regdir %>/highres2standard.png" alt="non-linear registration" class="img-rounded img-responsive">
+    </a>
+    <br />
+    <a href="<%= @anat.regdir %>/highres2standard.png" target="_blank">Open full-size image in new window</a>
+  </div>
+</div>
+
+
+<h2>Linear with 3dAllineate</h2>
+
+<p class="lead">
+  The images below are for the first step, the linear registration.
+</p>
+
+<div class="row">
+  <div class="col-md-12">
+    <a href="<%= @anat.regdir %>/highres2standard_linear.png" data-lightbox="registration" data-title="Linear Registration">
+      <img src="<%= @anat.regdir %>/highres2standard_linear.png" alt="non-linear registration" class="img-rounded img-responsive">
+    </a>
+    <br />
+    <a href="<%= @anat.regdir %>/highres2standard_linear.png" target="_blank">Open full-size image in new window</a>
+  </div>
+</div>
