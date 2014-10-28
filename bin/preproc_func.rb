@@ -27,12 +27,12 @@
 require 'pathname'
 SCRIPTDIR   = Pathname.new(__FILE__).realpath.dirname.dirname
 SCRIPTNAME  = Pathname.new(__FILE__).basename.sub_ext("")
-CDIR        = SCRIPTDIR + "commands/"
+CDIR        = SCRIPTDIR + "bin/"
 DDIR        = SCRIPTDIR + "data/"
 
 # add lib directory to ruby path
 $: << SCRIPTDIR + "lib" # will be scriptdir/lib
-$: << SCRIPTDIR + "commands" # will be scriptdir/commands
+$: << SCRIPTDIR + "bin" # will be scriptdir/bin
 
 require 'fileutils'
 require 'for_commands.rb' # provides various function such as 'run'

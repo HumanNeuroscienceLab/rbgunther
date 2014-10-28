@@ -28,7 +28,7 @@ if __FILE__==$0
 
   # add lib directory to ruby path
   $: << SCRIPTDIR + "lib" # will be scriptdir/lib
-  $: << SCRIPTDIR + "commands" unless $:.include?(SCRIPTDIR + "commands")
+  $: << SCRIPTDIR + "bin" unless $:.include?(SCRIPTDIR + "bin")
 end
 
 require 'for_commands.rb' # provides various function such as 'run'

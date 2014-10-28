@@ -22,12 +22,12 @@
 require 'pathname'
 SCRIPTDIR   = Pathname.new(__FILE__).realpath.dirname.dirname
 SCRIPTNAME  = Pathname.new(__FILE__).basename.sub_ext("")
-CDIR        = SCRIPTDIR + "commands/"
+CDIR        = SCRIPTDIR + "bin/"
 DDIR        = SCRIPTDIR + "data/"
 
 # add lib directory to ruby path
 $: << SCRIPTDIR + "lib" # will be scriptdir/lib
-$: << SCRIPTDIR + "commands" # will be scriptdir/commands
+$: << SCRIPTDIR + "bin" # will be scriptdir/bin
 
 # default template
 default_template = File.join(ENV['FSLDIR'], "data", "standard", "MNI152_T1_1mm_brain.nii.gz")

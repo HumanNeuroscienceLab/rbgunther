@@ -130,7 +130,7 @@ def anat_freesurfer!(cmdline = ARGV, l = nil)
     l.cmd "mri_convert -rl #{freedir}/mri/rawavg.mgz -rt nearest #{freedir}/mri/aparc.a2009s+aseg.mgz #{outdir}/aparc.a2009s+aseg#{ext}"
     l.cmd "mri_convert -rl #{freedir}/mri/rawavg.mgz -rt nearest #{freedir}/mri/aparc+aseg.mgz #{outdir}/aparc+aseg#{ext}"
   l.cmd "mri_convert -rl #{freedir}/mri/rawavg.mgz -rt nearest #{freedir}/mri/aseg.mgz #{outdir}/aseg#{ext}"
-  l.cmd "python #{SCRIPTDIR}/commands/anat_freesurfer_split.py #{outdir}/aseg#{ext} #{outdir}/volume"
+  l.cmd "python #{SCRIPTDIR}/bin/anat_freesurfer_split.py #{outdir}/aseg#{ext} #{outdir}/volume"
   
   
   l.info "Generate atlas to native volume space transform"
