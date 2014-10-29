@@ -98,7 +98,6 @@ def anat_suma!(cmdline = ARGV, l = nil)
   if not overwrite
     quit_if_all_outputs_exist(l, "#{freedir}/SUMA")
   end
-  l.cmd "mkdir #{outdir} 2> /dev/null"
   
   l.info "Setup"
   set_afni_to_overwrite if overwrite  # Set AFNI_DECONFLICT
