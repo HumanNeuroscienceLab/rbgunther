@@ -83,7 +83,7 @@ fwhms_highres   = opts[:fwhms_highres]
 fwhms_standard  = opts[:fwhms_standard]
 
 qadir     = opts[:qadir]
-qadir     = qadir.path.expand_path unless qa.dir.nil?
+qadir     = qadir.path.expand_path unless qadir.nil?
 
 ext       = opts[:ext]
 overwrite = opts[:overwrite]
