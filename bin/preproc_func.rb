@@ -292,10 +292,10 @@ gen_applywarp l, nil, :input => func.brain, :reg => func.regdir,
 l.title "Create the underlay"
 
 l.info "to native space"
-l.cmd "3dresample -inset #{func.regdir}/highres#{ext} -master #{func.highres.underlay} -prefix #{func.highres.underlay}"
+l.cmd "3dresample -inset #{func.regdir}/highres#{ext} -master #{func.highres.brain} -prefix #{func.highres.underlay}"
 
 l.info "to standard space"
-l.cmd "3dresample -inset #{func.regdir}/standard#{ext} -master #{func.standard.underlay} -prefix #{func.standard.underlay}"
+l.cmd "3dresample -inset #{func.regdir}/standard#{ext} -master #{func.standard.brain} -prefix #{func.standard.underlay}"
 
 
 ###
