@@ -57,6 +57,8 @@ p = Trollop::Parser.new do
   opt :fwhms_highres, "Smoothness levels to apply to data in highres space", :type => :floats, :required => true
   opt :fwhms_standard, "Smoothness levels to apply to data in highres space", :type => :floats, :required => true
   
+  opt :qadir, "Output directory with fmriqa results", :type => :string
+  
   opt :threads, "Number of OpenMP threads to use with AFNI (otherwise defaults to environmental variable OMP_NUM_THREADS if set -> #{ENV['OMP_NUM_THREADS']})", :type => :integer
   
   opt :ext, "File extensions to use in all outputs", :type => :string, :default => ".nii.gz"
@@ -79,6 +81,9 @@ res_highres     = opts[:res_highres]
 res_standard    = opts[:res_highres]
 fwhms_highres   = opts[:fwhms_highres]
 fwhms_standard  = opts[:fwhms_standard]
+
+qadir     = opts[:qadir]
+qadir     = qadir.path.expand_path unless qa.dir.nil?
 
 ext       = opts[:ext]
 overwrite = opts[:overwrite]
@@ -456,6 +461,11 @@ layout_file     = SCRIPTDIR + "html/func/layout.html.erb"
 @anat           = anat
 @func           = func
 @aclass         = "class='active'"
+if not qadir.nil?
+  @qahtml       = "#{qadir}/rawqa_#{subject}/index.html"
+else
+  @qahtml       = "#"
+end
 
 # loop through each page
 page_names      = ["index", "motion", "skull_strip", "registration"]

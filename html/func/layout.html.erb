@@ -46,7 +46,7 @@
             <li <%= @aclass if @active == 'registration' %>>
               <a href="registration.html">Registration</a></li>
             <li <%= @aclass if @active == 'quality_control' %>>
-              <a href="quality_control.html">Quality Control</a></li>
+              <a href="<%= @qahtml %>">Quality Control</a></li>
             <li <%= @aclass if @active == 'up' %>>
               <a href="#up-one-level">Go Up a Level</a></li> <!-- might want this to be just text-->       
           </ul>

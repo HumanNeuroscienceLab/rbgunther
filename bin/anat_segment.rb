@@ -154,13 +154,13 @@ def anat_segment!(cmdline = ARGV, l = nil)
 
   l.info "Soft-linking gray = #{ind_gray}, white = #{ind_white}, csf = #{ind_csf}"
   ## probability maps
-  l.cmd "ln -sf highres_prob_#{ind_gray}.nii.gz highres_gray_prob.nii.gz"
-  l.cmd "ln -sf highres_prob_#{ind_white}.nii.gz highres_white_prob.nii.gz"
-  l.cmd "ln -sf highres_prob_#{ind_csf}.nii.gz highres_csf_prob.nii.gz"
+  l.cmd "ln -sf #{outdir}/highres_prob_#{ind_gray}.nii.gz #{outdir}/highres_gray_prob.nii.gz"
+  l.cmd "ln -sf #{outdir}/highres_prob_#{ind_white}.nii.gz #{outdir}/highres_white_prob.nii.gz"
+  l.cmd "ln -sf #{outdir}/highres_prob_#{ind_csf}.nii.gz #{outdir}/highres_csf_prob.nii.gz"
   ## segmentations
-  l.cmd "ln -sf highres_seg_#{ind_gray}.nii.gz highres_gray_seg.nii.gz"
-  l.cmd "ln -sf highres_seg_#{ind_white}.nii.gz highres_white_seg.nii.gz"
-  l.cmd "ln -sf highres_seg_#{ind_csf}.nii.gz highres_csf_seg.nii.gz"
+  l.cmd "ln -sf #{outdir}/highres_seg_#{ind_gray}.nii.gz #{outdir}/highres_gray_seg.nii.gz"
+  l.cmd "ln -sf #{outdir}/highres_seg_#{ind_white}.nii.gz highres_white_seg.nii.gz"
+  l.cmd "ln -sf #{outdir}/highres_seg_#{ind_csf}.nii.gz #{outdir}/highres_csf_seg.nii.gz"
 
 end
 

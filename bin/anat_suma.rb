@@ -119,19 +119,15 @@ def anat_suma!(cmdline = ARGV, l = nil)
   l.info "Changing into '#{anat_regdir}'"
   Dir.chdir anat_regdir
   
-  tmpfile = Tempfile.new('highres')
-  l.info "creating temporary file #{tmpfile.path}"
-  l.cmd "3dcopy #{anat_regdir}/highres#{ext} #{tmpfile.path}"
+  l.info "Align surface to highres"
+  l.cmd "3dcopy #{anat_regdir}/highres#{ext} #{anat_regdir}/highres"
   l.cmd "@SUMA_AlignToExperiment \
-    -exp_anat #{tmpfile.path}+orig \
+    -exp_anat #{anat_regdir}/highres+orig \
     -surf_anat #{freedir}/SUMA/#{subject}_SurfVol.nii \
     -atlas_followers \
     -out_dxyz #{dxyz} \
     -prefix highres2surf"
-  l.info "deleting temporary file #{tmpfile.path}"
-  tmpfile.close
-  tmpfile.unlink
-  
+  l.cmd "rm -f #{anat_regdir}/highres+orig*"
   
   l.info "Clean-Up"
   reset_afni_deconflict if overwrite  # Unset AFNI_DECONFLICT
