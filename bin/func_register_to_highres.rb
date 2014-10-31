@@ -210,7 +210,7 @@ def func_register_to_highres!(cmdline = ARGV, l = nil)
     sl_opts=""
   end
 
-  l.cmd "slicer.py#{sl_opts} -r #{outdir}/highres#{ext} #{outdir}/exfunc2highres#{ext} #{outdir}/exfunc2highres.png"
+  l.cmd "slicer.py#{sl_opts} --auto -r #{outdir}/highres#{ext} #{outdir}/exfunc2highres#{ext} #{outdir}/exfunc2highres.png"
 
 
   ###

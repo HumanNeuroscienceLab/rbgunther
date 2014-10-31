@@ -69,6 +69,8 @@ def anat_freesurfer!(cmdline = ARGV, l = nil)
     opt :no_autorecon2, "Skip autorecon2 step", :default => false
     opt :no_autorecon3, "Skip autorecon3 step", :default => false
     
+    opt :threads, "Number of OpenMP threads to use with FreeSurfer (otherwise defaults to environmental variable OMP_NUM_THREADS if set -> #{ENV['OMP_NUM_THREADS']})", :type => :integer
+    
     opt :log, "Prefix for logging output to json and text files", :type => :string
     opt :ext, "File extensions to use in all outputs", :type => :string, :default => ".nii.gz"
     opt :overwrite, "Overwrite any output", :default => false
@@ -86,6 +88,9 @@ def anat_freesurfer!(cmdline = ARGV, l = nil)
   
   autorecon2 = !opts[:no_autorecon2]
   autorecon3 = !opts[:no_autorecon3]
+  
+  threads   = opts[:threads]
+  threads   = ENV['OMP_NUM_THREADS'].to_i if threads.nil? and not ENV['OMP_NUM_THREADS'].nil?
   
   ext        = opts[:ext]
   overwrite  = opts[:overwrite]
@@ -118,7 +123,7 @@ def anat_freesurfer!(cmdline = ARGV, l = nil)
     outputs_exist = File.exist?("#{freedir}/mri/aseg.mgz") and File.exist?("#{freedir}/surf/lh.inflated")
     if not outputs_exist or overwrite
       l.info "Run freesurfer - autorecon2"
-      l.cmd "recon-all -s #{subject} -sd #{sd} -autorecon2"
+      l.cmd "recon-all -s #{subject} -sd #{sd} -autorecon2 -openmp #{threads}"
     else
       l.warn "Freesurfer autorecon2 output already exists, skipping!"
     end
@@ -128,7 +133,7 @@ def anat_freesurfer!(cmdline = ARGV, l = nil)
     outputs_exist = File.exist?("#{freedir}/mri/aparc+aseg.mgz") and File.exist?("#{freedir}/mri/wmparc.mgz")
     if not outputs_exist or overwrite
       l.info "Run freesurfer - autorecon3"
-      l.cmd "recon-all -s #{subject} -sd #{sd} -autorecon3"
+      l.cmd "recon-all -s #{subject} -sd #{sd} -autorecon3 -openmp #{threads}"
     else
       l.warn "Freesurfer autorecon3 output already exists, skipping!"
     end

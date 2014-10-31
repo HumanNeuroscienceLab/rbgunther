@@ -176,8 +176,8 @@ def func_register_to_standard!(cmdline = ARGV, l = nil)
   else
     sl_opts=""
   end
-  l.info "slicer.py#{sl_opts} -r standard#{ext} exfunc2standard_linear#{ext} exfunc2standard_linear.png"
-  l.info "slicer.py#{sl_opts} -r standard#{ext} exfunc2standard#{ext} exfunc2standard.png"
+  l.info "slicer.py#{sl_opts} --auto -r standard#{ext} exfunc2standard_linear#{ext} exfunc2standard_linear.png"
+  l.info "slicer.py#{sl_opts} --auto -r standard#{ext} exfunc2standard#{ext} exfunc2standard.png"
   
   
   ###

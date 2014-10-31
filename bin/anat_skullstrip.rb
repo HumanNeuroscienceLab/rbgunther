@@ -66,6 +66,8 @@ def anat_skullstrip!(cmdline = ARGV, l = nil)
     opt :outdir, "Output directory", :type => :string, :required => true
     opt :plot, "Produce plots (must also output mask)", :default => false
     
+    opt :threads, "Number of OpenMP threads to use with AFNI (otherwise defaults to environmental variable OMP_NUM_THREADS if set -> #{ENV['OMP_NUM_THREADS']})", :type => :integer
+    
     opt :log, "Prefix for logging output to json and text files", :type => :string
     opt :ext, "File extensions to use in all outputs", :type => :string, :default => ".nii.gz"
     opt :overwrite, "Overwrite any output", :default => false
@@ -83,6 +85,9 @@ def anat_skullstrip!(cmdline = ARGV, l = nil)
   freedir = opts[:freedir].path.expand_path
   sd      = freedir.dirname
   subject = freedir.basename
+  
+  threads   = opts[:threads]
+  threads   = ENV['OMP_NUM_THREADS'].to_i if threads.nil? and not ENV['OMP_NUM_THREADS'].nil?
   
   ext        = opts[:ext]
   overwrite  = opts[:overwrite]
@@ -115,7 +120,7 @@ def anat_skullstrip!(cmdline = ARGV, l = nil)
   outputs_exist = File.exist?("#{freedir}/mri/brainmask.mgz")
   if not outputs_exist or overwrite  
     l.info "Run freesurfer (only up to skull-stripping)"
-    l.cmd "recon-all -i #{head} -s #{subject} -sd #{sd} -autorecon1"
+    l.cmd "recon-all -i #{head} -s #{subject} -sd #{sd} -autorecon1 -openmp #{threads}"
   else
     l.warn "Skipping freesurfer since outputs exist"
   end

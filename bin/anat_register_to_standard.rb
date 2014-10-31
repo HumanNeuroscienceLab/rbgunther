@@ -181,8 +181,8 @@ def anat_register_to_standard!(cmdline = ARGV, l = nil)
   else
     sl_opts=""
   end
-  l.cmd "slicer.py#{sl_opts} -r standard#{ext} highres2standard_linear#{ext} highres2standard_linear.png"
-  l.cmd "slicer.py#{sl_opts} -r standard#{ext} highres2standard#{ext} highres2standard.png"
+  l.cmd "slicer.py#{sl_opts} --auto -r standard#{ext} highres2standard_linear#{ext} highres2standard_linear.png"
+  l.cmd "slicer.py#{sl_opts} --auto -r standard#{ext} highres2standard#{ext} highres2standard.png"
 
 
   ###

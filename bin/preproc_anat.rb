@@ -149,7 +149,7 @@ l.cmd "3dcopy#{af_opts} #{input} #{anat.head}"
 
 l.title "Skull Strip"
 require 'anat_skullstrip.rb'
-anat_skullstrip l, nil, :head => anat.head, :outdir => outdir.to_s, :freedir => "#{freedir}/#{subject}", :plot => true, **rb_opts
+anat_skullstrip l, nil, :head => anat.head, :outdir => outdir.to_s, :freedir => "#{freedir}/#{subject}", :threads => threads.to_s, :plot => true, **rb_opts
 
 
 ###
@@ -176,7 +176,7 @@ anat_segment l, nil, :input => anat.brain, :reg => anat.regdir, :output => anat.
 
 l.title "Freesurfer the brain"
 require 'anat_freesurfer.rb'
-anat_freesurfer l, nil, :freedir => "#{freedir}/#{subject}", :outdir => "#{outdir}/freesurfer", **rb_opts
+anat_freesurfer l, nil, :freedir => "#{freedir}/#{subject}", :outdir => "#{outdir}/freesurfer", :threads => threads.to_s, **rb_opts
 
 
 ###
