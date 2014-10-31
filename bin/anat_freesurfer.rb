@@ -115,13 +115,23 @@ def anat_freesurfer!(cmdline = ARGV, l = nil)
   set_afni_to_overwrite if overwrite  # Set AFNI_DECONFLICT
   
   if autorecon2
-    l.info "Run freesurfer - autorecon2"
-    l.cmd "recon-all -s #{subject} -sd #{sd} -autorecon2"
+    outputs_exist = File.exist?("#{freedir}/mri/aseg.mgz") and File.exist?("#{freedir}/surf/lh.inflated")
+    if not outputs_exist or overwrite
+      l.info "Run freesurfer - autorecon2"
+      l.cmd "recon-all -s #{subject} -sd #{sd} -autorecon2"
+    else
+      l.warn "Freesurfer autorecon2 output already exists, skipping!"
+    end
   end  
   
   if autorecon3
-    l.info "Run freesurfer - autorecon3"
-    l.cmd "recon-all -s #{subject} -sd #{sd} -autorecon3"
+    outputs_exist = File.exist?("#{freedir}/mri/aparc+aseg.mgz") and File.exist?("#{freedir}/mri/wmparc.mgz")
+    if not outputs_exist or overwrite
+      l.info "Run freesurfer - autorecon3"
+      l.cmd "recon-all -s #{subject} -sd #{sd} -autorecon3"
+    else
+      l.warn "Freesurfer autorecon3 output already exists, skipping!"
+    end
   end
   
   l.info "Copy freesurfer outputs to our output folder"

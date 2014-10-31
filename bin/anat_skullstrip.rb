@@ -112,9 +112,13 @@ def anat_skullstrip!(cmdline = ARGV, l = nil)
   l.info "Setup"
   set_afni_to_overwrite if overwrite  # Set AFNI_DECONFLICT
   
-  
-  l.info "Run freesurfer (only up to skull-stripping)"
-  l.cmd "recon-all -i #{head} -s #{subject} -sd #{sd} -autorecon1"
+  outputs_exist = File.exist?("#{freedir}/mri/brainmask.mgz")
+  if not outputs_exist or overwrite  
+    l.info "Run freesurfer (only up to skull-stripping)"
+    l.cmd "recon-all -i #{head} -s #{subject} -sd #{sd} -autorecon1"
+  else
+    l.warn "Skipping freesurfer since outputs exist"
+  end
   
   l.info "Copy freesurfer outputs to our output folder"
   l.cmd "mri_convert -rl #{freedir}/mri/rawavg.mgz -rt nearest #{freedir}/mri/brainmask.mgz #{bias}"
