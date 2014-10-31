@@ -44,6 +44,7 @@ require 'for_afni.rb' # provides various function such as 'run'
 # anat_skullstrip(l, args = [], opts = {})
 def func_motion_correct(l, args = [], opts = {})
   cmdline = cli_wrapper(args, opts)
+  l.info "Running: #{Pathname.new(__FILE__).basename} #{cmdline}"
   func_motion_correct!(cmdline, l)
 end
 

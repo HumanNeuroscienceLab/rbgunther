@@ -48,6 +48,7 @@ def anat_freesurfer(l, args = [], opts = {})
   #require 'pry'
   #binding.pry
   cmdline = cli_wrapper(args, opts)
+  l.info "Running: #{Pathname.new(__FILE__).basename} #{cmdline}"
   anat_freesurfer!(cmdline, l)
 end
 
@@ -123,7 +124,7 @@ def anat_freesurfer!(cmdline = ARGV, l = nil)
     outputs_exist = File.exist?("#{freedir}/mri/aseg.mgz") and File.exist?("#{freedir}/surf/lh.inflated")
     if not outputs_exist or overwrite
       l.info "Run freesurfer - autorecon2"
-      l.cmd "recon-all -s #{subject} -sd #{sd} -autorecon2 -openmp #{threads}"
+      l.cmd "recon-all -s #{subject} -sd #{sd} -no-isrunning -autorecon2 -openmp #{threads}"
     else
       l.warn "Freesurfer autorecon2 output already exists, skipping!"
     end
@@ -133,7 +134,7 @@ def anat_freesurfer!(cmdline = ARGV, l = nil)
     outputs_exist = File.exist?("#{freedir}/mri/aparc+aseg.mgz") and File.exist?("#{freedir}/mri/wmparc.mgz")
     if not outputs_exist or overwrite
       l.info "Run freesurfer - autorecon3"
-      l.cmd "recon-all -s #{subject} -sd #{sd} -autorecon3 -openmp #{threads}"
+      l.cmd "recon-all -s #{subject} -sd #{sd} -no-isrunning -autorecon3 -openmp #{threads}"
     else
       l.warn "Freesurfer autorecon3 output already exists, skipping!"
     end

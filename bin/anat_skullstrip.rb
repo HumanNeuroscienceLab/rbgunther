@@ -46,6 +46,7 @@ def anat_skullstrip(l, args = [], opts = {})
   #require 'pry'
   #binding.pry
   cmdline = cli_wrapper(args, opts)
+  l.info "Running: #{Pathname.new(__FILE__).basename} #{cmdline}"
   anat_skullstrip!(cmdline, l)
 end
 
@@ -120,7 +121,7 @@ def anat_skullstrip!(cmdline = ARGV, l = nil)
   outputs_exist = File.exist?("#{freedir}/mri/brainmask.mgz")
   if not outputs_exist or overwrite  
     l.info "Run freesurfer (only up to skull-stripping)"
-    l.cmd "recon-all -i #{head} -s #{subject} -sd #{sd} -autorecon1 -openmp #{threads}"
+    l.cmd "recon-all -i #{head} -s #{subject} -sd #{sd} -no-isrunning -autorecon1 -openmp #{threads}"
   else
     l.warn "Skipping freesurfer since outputs exist"
   end

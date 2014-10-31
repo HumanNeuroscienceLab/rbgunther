@@ -49,6 +49,7 @@ require 'for_afni.rb' # provides various function such as 'run'
 # anat_skullstrip(l, args = [], opts = {})
 def func_register_to_standard(l, args = [], opts = {})
   cmdline = cli_wrapper(args, opts)
+  l.info "Running: #{Pathname.new(__FILE__).basename} #{cmdline}"
   func_register_to_standard!(cmdline, l)
 end
 

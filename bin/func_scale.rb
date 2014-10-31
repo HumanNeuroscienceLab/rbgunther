@@ -43,6 +43,7 @@ require 'for_afni.rb' # provides various function such as 'run'
 # anat_skullstrip(l, args = [], opts = {})
 def func_scale(l, args = [], opts = {})
   cmdline = cli_wrapper(args, opts)
+  l.info "Running: #{Pathname.new(__FILE__).basename} #{cmdline}"
   func_scale!(cmdline, l)
 end
 

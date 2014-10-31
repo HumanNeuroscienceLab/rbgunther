@@ -41,6 +41,7 @@ require 'for_afni.rb' # provides various function such as 'run'
 # anat_register_to_standard(l, args = [], opts = {})
 def anat_register_to_standard(l, args = [], opts = {})
   cmdline = cli_wrapper(args, opts)
+  l.info "Running: #{Pathname.new(__FILE__).basename} #{cmdline}"
   anat_register_to_standard!(cmdline, l)
 end
 
