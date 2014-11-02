@@ -57,7 +57,7 @@ p = Trollop::Parser.new do
   opt :fwhms_highres, "Smoothness levels to apply to data in highres space", :type => :floats, :required => true
   opt :fwhms_standard, "Smoothness levels to apply to data in highres space", :type => :floats, :required => true
   
-  opt :do, "Steps of preprocessing to complete. Options are: all (default), motion-correct, skull-strip, registration, highres, and standard", :default => "all", :type => :strings
+  opt :do, "Steps of preprocessing to complete. Options are: all (default), motion-correct, skull-strip, registration, highres, and standard", :default => ["all"], :type => :strings
   
   opt :qadir, "Output directory with fmriqa results", :type => :string
   
