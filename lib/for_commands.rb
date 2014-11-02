@@ -262,12 +262,14 @@ def create_logger(outprefix=nil, overwrite=false)
     outdir = outprefix.path.dirname
     outdir.mkpath
     
-    txt_file  = "#{outprefix}.txt".path
-    json_file = "#{outprefix}.json".path
+    dt = Time.now.strftime("%Y-%m-%d_%H-%S")
+    
+    txt_file  = "#{outprefix}_#{dt}.txt".path
+    json_file = "#{outprefix}_#{dt}.json".path
   
     raise "Log file '#{txt_file}' already exists" if txt_file.exist? and not overwrite
     raise "Log file '#{json_file}' already exists" if json_file.exist? and not overwrite
-  
+        
     # STDOUT
     # stderr_log = Logger.new(STDERR)
     stdout_log = MyLogger.new(STDOUT)
@@ -294,6 +296,10 @@ def create_logger(outprefix=nil, overwrite=false)
     end
   
     log = MultiLogger.new( stdout_log, txt_log, json_log )
+    
+    # keep an easier to find log file
+    FileUtils.ln_sf txt_file, "#{outprefix}.txt", :verbose => true
+    FileUtils.ln_sf json_file, "#{outprefix}.json", :verbose => true
   end
   
   return log

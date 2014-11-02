@@ -57,6 +57,8 @@ p = Trollop::Parser.new do
   opt :fwhms_highres, "Smoothness levels to apply to data in highres space", :type => :floats, :required => true
   opt :fwhms_standard, "Smoothness levels to apply to data in highres space", :type => :floats, :required => true
   
+  opt :do, "Steps of preprocessing to complete. Options are: all (default), motion-correct, skull-strip, registration, highres, and standard", :default => "all", :type => :strings
+  
   opt :qadir, "Output directory with fmriqa results", :type => :string
   
   opt :threads, "Number of OpenMP threads to use with AFNI (otherwise defaults to environmental variable OMP_NUM_THREADS if set -> #{ENV['OMP_NUM_THREADS']})", :type => :integer
@@ -78,7 +80,7 @@ tr        = opts[:tr]
 keep      = opts[:keep]
 
 res_highres     = opts[:res_highres]
-res_standard    = opts[:res_highres]
+res_standard    = opts[:res_standard]
 fwhms_highres   = opts[:fwhms_highres]
 fwhms_standard  = opts[:fwhms_standard]
 
@@ -91,6 +93,19 @@ overwrite = opts[:overwrite]
 threads   = opts[:threads]
 threads   = ENV['OMP_NUM_THREADS'].to_i if threads.nil? and not ENV['OMP_NUM_THREADS'].nil?
 threads   = 1 if threads.nil?
+
+# Steps to complete
+do_opts   = ["motion-correct", "skull-strip", "registration", "highres", "standard"]
+do_steps  = opts[:do]
+## deal with all
+p.die(:do, "argument 'all' must be provided alone") if do_steps.include?("all") and do_steps.count > 1
+do_steps  = do_opts.clone if do_steps[0] == 'all'
+## deal with rest
+steps     = Hash[do_opts.collect{ |v| [v, false] }]
+do_steps.each do |step|
+  p.die(:do, "unknown argument #{step}. must be one of #{do_opts.join(', ')}") if not do_opts.include? step
+  steps[step] = true
+end
 
 # Additional paths
 subdir    = basedir + subject
@@ -203,104 +218,59 @@ l.info "Creating file-backed logger"
 l = create_logger("#{func.repdir}/log", overwrite)
 
 
-###
-# Copy over input data
-###
+if steps['motion-correct']
+  ###
+  # Copy over input data
+  ###
 
-l.title "Copy Input Data"
-runs.each_with_index do |run,ri|
-  l.cmd "ln -sf #{inputs[ri]} #{func.raw.inputs[ri]}"
+  l.title "Copy Input Data"
+  runs.each_with_index do |run,ri|
+    l.cmd "ln -sf #{inputs[ri]} #{func.raw.inputs[ri]}"
+  end
+
+
+  ###
+  # Motion Correct
+  ###
+
+  l.title "Motion Correct"
+
+  require 'func_motion_correct.rb'
+  func_motion_correct l, nil, :inputs => func.raw.inputs, :outprefix => func.mc.prefix, 
+    :working => func.mc.workdir.to_s, :keepworking => keep, **rb_opts
+
+  l.cmd "ln -sf #{func.mc.prefix}_mean#{ext} #{func.head}"
 end
 
+if steps['skull-strip']
+  ###
+  # Skull-Strip
+  ###
 
-###
-# Motion Correct
-###
+  l.title "Skull-Strip"
 
-l.title "Motion Correct"
+  require 'func_skullstrip.rb'
+  func_skullstrip l, nil, :head => func.head, :brain => func.brain, :mask => func.mask, 
+    :dilate => "1", :plot => true, **rb_opts
+end
 
-require 'func_motion_correct.rb'
-func_motion_correct l, nil, :inputs => func.raw.inputs, :outprefix => func.mc.prefix, 
-  :working => func.mc.workdir.to_s, :keepworking => keep, **rb_opts
+if steps['registration']
+  ###
+  # Register
+  ###
 
-l.cmd "ln -sf #{func.mc.prefix}_mean#{ext} #{func.head}"
+  l.title "Registration"
 
+  require 'func_register_to_highres.rb'
+  extra_opts = rb_opts.clone
+  extra_opts['working'] = func.regworkdir if keep
+  func_register_to_highres l, nil, :epi => func.brain, :anat => anat.brain, 
+    :output => func.regdir, :threads => threads.to_s, **extra_opts
 
-###
-# Skull-Strip
-###
-
-l.title "Skull-Strip"
-
-require 'func_skullstrip.rb'
-func_skullstrip l, nil, :head => func.head, :brain => func.brain, :mask => func.mask, 
-  :dilate => "1", :plot => true, **rb_opts
-
-
-###
-# Register
-###
-
-l.title "Registration"
-
-require 'func_register_to_highres.rb'
-extra_opts = rb_opts.clone
-extra_opts['working'] = func.regworkdir if keep
-func_register_to_highres l, nil, :epi => func.brain, :anat => anat.brain, 
-  :output => func.regdir, :threads => threads.to_s, **extra_opts
-
-require 'func_register_to_standard.rb'
-func_register_to_standard l, nil, :epireg => func.regdir, :anatreg => anat.regdir, 
-  :threads => threads.to_s, **rb_opts
-
-
-l.title "Apply Registration to Brain Mask"
-require 'gen_applywarp.rb'
-
-l.info "to native space"
-extra_opts = rb_opts.clone
-extra_opts[:dxyz] = res_highres unless res_highres.nil?
-gen_applywarp l, nil, :input => func.mask, :reg => func.regdir, 
-  :warp => 'exfunc-to-highres', :output => func.highres.mask, :interp => 'NN', 
-  :threads => threads.to_s, **extra_opts
-
-l.info "to standard space"
-extra_opts = rb_opts.clone
-extra_opts[:dxyz] = res_standard unless res_standard.nil?
-gen_applywarp l, nil, :input => func.mask, :reg => func.regdir, 
-  :warp => 'exfunc-to-standard', :output => func.standard.mask, :interp => 'NN', 
-  :threads => threads.to_s, **extra_opts
-
-
-l.title "Apply Registration to Mean Brain"
-
-l.info "to native space"
-extra_opts = rb_opts.clone
-extra_opts[:dxyz] = res_highres unless res_highres.nil?
-gen_applywarp l, nil, :input => func.brain, :reg => func.regdir, 
-  :warp => 'exfunc-to-highres', :output => func.highres.brain, :interp => 'NN', 
-  :threads => threads.to_s, **extra_opts
-
-l.info "to standard space"
-extra_opts = rb_opts.clone
-extra_opts[:dxyz] = res_standard unless res_standard.nil?
-gen_applywarp l, nil, :input => func.brain, :reg => func.regdir, 
-  :warp => 'exfunc-to-standard', :output => func.standard.brain, :interp => 'NN', 
-  :threads => threads.to_s, **extra_opts
-
-
-l.title "Create the underlay"
-
-l.info "to native space"
-l.cmd "3dresample -inset #{func.regdir}/highres#{ext} -master #{func.highres.brain} -prefix #{func.highres.underlay}"
-
-l.info "to standard space"
-l.cmd "3dresample -inset #{func.regdir}/standard#{ext} -master #{func.standard.brain} -prefix #{func.standard.underlay}"
-
-
-###
-# Loop through each run
-###
+  require 'func_register_to_standard.rb'
+  func_register_to_standard l, nil, :epireg => func.regdir, :anatreg => anat.regdir, 
+    :threads => threads.to_s, **rb_opts
+end
 
 # This takes as input a filename in the working directory
 # and then an output file
@@ -311,128 +281,196 @@ def move_file(l, infile, outfile)
   l.cmd "ln -s #{outfile} #{infile}"
 end
 
-runs.each_with_index do |run,ri|
-  l.title "Run #{run}"
-  
-  
-  ###
-  # Apply Register
-  ###
-  
-  l.title "Apply Registration of 4D Functional Data"
-  
-  l.info "to native space"
-  extra_opts = rb_opts.clone
-  extra_opts[:dxyz] = res_highres unless res_highres.nil?
-  gen_applywarp l, nil, :input => func.raw.inputs[ri], :reg => func.regdir, 
-    :warp => 'exfunc-to-highres', :output => func.highres.mc[ri], :interp => 'NN', 
-    :threads => threads.to_s, **extra_opts
-
-  l.info "to standard space"
-  extra_opts = rb_opts.clone
-  extra_opts[:dxyz] = res_standard unless res_standard.nil?
-  gen_applywarp l, nil, :input => func.raw.inputs[ri], :reg => func.regdir, 
-    :warp => 'exfunc-to-standard', :output => func.standard.mc[ri], :interp => 'NN', 
-    :threads => threads.to_s, **extra_opts
-  
-    
-  ###
-  # Smooth and Scale
-  ###
-  require 'func_smooth.rb' # TODO: use threads
+if steps['highres']
+  require 'gen_applywarp.rb'
+  require 'func_smooth.rb'
   require 'func_scale.rb'
   
-  # highres; messy i know
+  l.title "To Highres Space"
+  
+  l.title "Apply Registration to Brain Mask"
+  extra_opts = rb_opts.clone
+  extra_opts[:dxyz] = res_highres unless res_highres.nil?
+  gen_applywarp l, nil, :input => func.mask, :reg => func.regdir, 
+    :warp => 'exfunc-to-highres', :output => func.highres.mask, :interp => 'NN', 
+    :threads => threads.to_s, **extra_opts
+  
+  l.title "Apply Registration to Mean Brain"
+  extra_opts = rb_opts.clone
+  extra_opts[:dxyz] = res_highres unless res_highres.nil?
+  gen_applywarp l, nil, :input => func.brain, :reg => func.regdir, 
+    :warp => 'exfunc-to-highres', :output => func.highres.brain, :interp => 'NN', 
+    :threads => threads.to_s, **extra_opts
+  
+  l.title "Create the underlay"
+  l.cmd "3dresample -inset #{func.regdir}/highres#{ext} -master #{func.highres.brain} -prefix #{func.highres.underlay}"
+  
+  l.title "Looping through runs"
+  runs.each_with_index do |run,ri|
+    l.title "Run #{run}"
+    
+    ###
+    # Apply Register
+    ###
+  
+    l.title "Apply Registration of 4D Functional Data"
+    extra_opts = rb_opts.clone
+    extra_opts[:dxyz] = res_highres unless res_highres.nil?
+    gen_applywarp l, nil, :input => func.raw.inputs[ri], :reg => func.regdir, 
+      :warp => 'exfunc-to-highres', :output => func.highres.mc[ri], :interp => 'NN', 
+      :threads => threads.to_s, **extra_opts
+    
+    
+    ###
+    # Smooth and Scale
+    ###
+    
+    fwhms_highres.each_with_index do |fwhm, fi|
+      l.title "Smooth with #{fwhm}mm and then scale in highres space"
+      sfwhm = fwhm.to_s.sub(".0", "")
+    
+      if fwhm == 0
+        l.info "only masking to skip smoothing"
+        l.cmd "3dcalc -a #{func.highres.mc[ri]} -b #{func.highres.mask} -expr 'a*step(b)' -prefix #{func.highres.smooth[ri] % sfwhm}"
+      else
+        l.info "#{fwhm}mm smoothing"
+        func_smooth l, nil, :input => func.highres.mc[ri], :mask => func.highres.mask, 
+          :fwhm => fwhm.to_s, :output => func.highres.smooth[ri] % sfwhm, 
+          :threads => threads.to_s, **rb_opts
+      end
+    
+      l.info "update the mask"
+      l.cmd "fslmaths #{func.highres.smooth[ri] % sfwhm} -mas #{func.highres.mask} -Tmin -bin #{func.highres.mask}"
+    
+      l.info "scale (divide by mean)"
+      func_scale l, nil, :input => func.highres.smooth[ri] % sfwhm, :mask => func.highres.mask, 
+        :output => func.highres.scale[ri] % sfwhm, :savemean => true
+    
+      l.info "final soft-link"
+      move_file l, func.highres.scale[ri] % sfwhm, func.highres.final[ri] % sfwhm
+    
+      if not keep
+        l.info "clean up some unneeded files"
+        FileUtils.remove [func.highres.smooth[ri] % sfwhm, func.highres.scale[ri] % sfwhm], :verbose => true
+      end
+    end
+  
+    if not keep
+      l.info "Clean up some more unneded files".magenta
+      FileUtils.remove [ func.highres.mc[ri] ], :verbose => true
+    end
+  end
+  
+  ###
+  # Remove run effects and concatenate data
+  ###
+
+  require 'func_combine_runs.rb'
+
   fwhms_highres.each_with_index do |fwhm, fi|
-    l.title "Smooth with #{fwhm}mm and then scale in highres space"
     sfwhm = fwhm.to_s.sub(".0", "")
+  
+    l.title "Concatenate runs for #{sfwhm}mm smoothed data in highres space"
+    func_combine_runs l, nil, :inputs => func.highres.final.collect{|f| f % sfwhm}, :mask => func.highres.mask, 
+      :outprefix => func.highres.concatenate_prefix % sfwhm, :motion => "#{func.mc.prefix}_motion_demean.1D", 
+      :tr => tr, :njobs => threads.to_s, **rb_opts
+  end
+end
+
+if steps['standard']
+  require 'gen_applywarp.rb'
+  require 'func_smooth.rb'
+  require 'func_scale.rb'
+  
+  l.title "To Standard Space"
+  
+  l.title "Apply Registration to Brain Mask"
+  extra_opts = rb_opts.clone
+  extra_opts[:dxyz] = res_standard unless res_standard.nil?
+  gen_applywarp l, nil, :input => func.mask, :reg => func.regdir, 
+    :warp => 'exfunc-to-standard', :output => func.standard.mask, :interp => 'NN', 
+    :threads => threads.to_s, **extra_opts
+  
+  l.title "Apply Registration to Mean Brain"
+  extra_opts = rb_opts.clone
+  extra_opts[:dxyz] = res_standard unless res_standard.nil?
+  gen_applywarp l, nil, :input => func.brain, :reg => func.regdir, 
+    :warp => 'exfunc-to-standard', :output => func.standard.brain, :interp => 'NN', 
+    :threads => threads.to_s, **extra_opts
+  
+  l.title "Create the underlay"
+  l.cmd "3dresample -inset #{func.regdir}/standard#{ext} -master #{func.standard.brain} -prefix #{func.standard.underlay}"
+  
+  l.title "Looping through runs"
+  runs.each_with_index do |run,ri|
+    l.title "Run #{run}"
+  
+    ###
+    # Apply Register
+    ###
+  
+    l.title "Apply Registration of 4D Functional Data"
+    extra_opts = rb_opts.clone
+    extra_opts[:dxyz] = res_standard unless res_standard.nil?
+    gen_applywarp l, nil, :input => func.raw.inputs[ri], :reg => func.regdir, 
+      :warp => 'exfunc-to-standard', :output => func.standard.mc[ri], :interp => 'NN', 
+      :threads => threads.to_s, **extra_opts
+  
     
-    if fwhm == 0
-      l.info "only masking to skip smoothing"
-      l.cmd "3dcalc -a #{func.highres.mc[ri]} -b #{func.highres.mask} -expr 'a*step(b)' -prefix #{func.highres.smooth[ri] % sfwhm}"
-    else
-      l.info "#{fwhm}mm smoothing"
-      func_smooth l, nil, :input => func.highres.mc[ri], :mask => func.highres.mask, 
-        :fwhm => fwhm.to_s, :output => func.highres.smooth[ri] % sfwhm, 
-        :threads => threads.to_s, **rb_opts
+    ###
+    # Smooth and Scale
+    ###
+    
+    fwhms_standard.each_with_index do |fwhm, fi|
+      l.title "Smooth with #{fwhm}mm and then scale in standard space"
+      sfwhm = fwhm.to_s.sub(".0", "")
+    
+      if fwhm == 0
+        l.info "only masking to skip smoothing"
+        l.cmd "3dcalc -a #{func.standard.mc[ri]} -b #{func.standard.mask} -expr 'a*step(b)' -prefix #{func.standard.smooth[ri] % sfwhm}"
+      else
+        l.info "#{fwhm}mm smoothing"
+        func_smooth l, nil, :input => func.standard.mc[ri], :mask => func.standard.mask, 
+          :fwhm => fwhm.to_s, :output => func.standard.smooth[ri] % sfwhm, 
+          :threads => threads.to_s, **rb_opts
+      end
+    
+      l.info "update the mask"
+      l.cmd "fslmaths #{func.standard.smooth[ri] % sfwhm} -mas #{func.standard.mask} -Tmin -bin #{func.standard.mask}"
+    
+      l.info "scale (divide by mean)"
+      func_scale l, nil, :input => func.standard.smooth[ri] % sfwhm, :mask => func.standard.mask, 
+        :output => func.standard.scale[ri] % sfwhm, :savemean => true
+    
+      l.info "final soft-link"
+      move_file l, func.standard.scale[ri] % sfwhm, func.standard.final[ri] % sfwhm
+    
+      if not keep
+        l.info "clean up some unneeded files"
+        FileUtils.remove [func.standard.smooth[ri] % sfwhm, func.standard.scale[ri] % sfwhm], :verbose => true
+      end
     end
-    
-    l.info "update the mask"
-    l.cmd "fslmaths #{func.highres.smooth[ri] % sfwhm} -mas #{func.highres.mask} -Tmin -bin #{func.highres.mask}"
-    
-    l.info "scale (divide by mean)"
-    func_scale l, nil, :input => func.highres.smooth[ri] % sfwhm, :mask => func.highres.mask, 
-      :output => func.highres.scale[ri] % sfwhm, :savemean => true
-    
-    l.info "final soft-link"
-    move_file l, func.highres.scale[ri] % sfwhm, func.highres.final[ri] % sfwhm
-    
+  
     if not keep
-      l.info "clean up some unneeded files"
-      FileUtils.remove [func.highres.smooth[ri] % sfwhm, func.highres.scale[ri] % sfwhm], :verbose => true
+      l.info "Clean up some more unneded files".magenta
+      FileUtils.remove [ func.standard.mc[ri] ], :verbose => true
     end
   end
   
-  # standard; messy i know
+  ###
+  # Remove run effects and concatenate data
+  ###
+
+  require 'func_combine_runs.rb'
+  
   fwhms_standard.each_with_index do |fwhm, fi|
-    l.title "Smooth with #{fwhm}mm and then scale in standard space"
     sfwhm = fwhm.to_s.sub(".0", "")
-    
-    if fwhm == 0
-      l.info "only masking to skip smoothing"
-      l.cmd "3dcalc -a #{func.standard.mc[ri]} -b #{func.standard.mask} -expr 'a*step(b)' -prefix #{func.standard.smooth[ri] % sfwhm}"
-    else
-      l.info "#{fwhm}mm smoothing"
-      func_smooth l, nil, :input => func.standard.mc[ri], :mask => func.standard.mask, 
-        :fwhm => fwhm.to_s, :output => func.standard.smooth[ri] % sfwhm, 
-        :threads => threads.to_s, **rb_opts
-    end
-    
-    l.info "update the mask"
-    l.cmd "fslmaths #{func.standard.smooth[ri] % sfwhm} -mas #{func.standard.mask} -Tmin -bin #{func.standard.mask}"
-    
-    l.info "scale (divide by mean)"
-    func_scale l, nil, :input => func.standard.smooth[ri] % sfwhm, :mask => func.standard.mask, 
-      :output => func.standard.scale[ri] % sfwhm, :savemean => true
-    
-    l.info "final soft-link"
-    move_file l, func.standard.scale[ri] % sfwhm, func.standard.final[ri] % sfwhm
-    
-    if not keep
-      l.info "clean up some unneeded files"
-      FileUtils.remove [func.standard.smooth[ri] % sfwhm, func.standard.scale[ri] % sfwhm], :verbose => true
-    end
+  
+    l.title "Concatenate runs for #{sfwhm}mm smoothed data in standard space"
+    func_combine_runs l, nil, :inputs => func.standard.final.collect{|f| f % sfwhm}, :mask => func.standard.mask, 
+      :outprefix => func.standard.concatenate_prefix % sfwhm, :motion => "#{func.mc.prefix}_motion_demean.1D", 
+      :tr => tr, :njobs => threads.to_s, **rb_opts  
   end
-  
-  if not keep
-    l.info "Clean up some more unneded files".magenta
-    FileUtils.remove [ func.highres.mc[ri], func.standard.mc[ri] ], :verbose => true
-  end
-end
-
-
-###
-# Remove run effects and concatenate data
-###
-
-require 'func_combine_runs.rb'
-
-fwhms_highres.each_with_index do |fwhm, fi|
-  sfwhm = fwhm.to_s.sub(".0", "")
-  
-  l.title "Concatenate runs for #{sfwhm}mm smoothed data in highres space"
-  func_combine_runs l, nil, :inputs => func.highres.final.collect{|f| f % sfwhm}, :mask => func.highres.mask, 
-    :outprefix => func.highres.concatenate_prefix % sfwhm, :motion => "#{func.mc.prefix}_motion_demean.1D", 
-    :tr => tr, :njobs => threads.to_s, **rb_opts
-end
-
-fwhms_standard.each_with_index do |fwhm, fi|
-  sfwhm = fwhm.to_s.sub(".0", "")
-  
-  l.title "Concatenate runs for #{sfwhm}mm smoothed data in standard space"
-  func_combine_runs l, nil, :inputs => func.standard.final.collect{|f| f % sfwhm}, :mask => func.standard.mask, 
-    :outprefix => func.standard.concatenate_prefix % sfwhm, :motion => "#{func.mc.prefix}_motion_demean.1D", 
-    :tr => tr, :njobs => threads.to_s, **rb_opts  
 end
 
 
