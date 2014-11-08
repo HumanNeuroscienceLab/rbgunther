@@ -18,7 +18,7 @@ option_list <- list(
   make_option(c("-o", "--output"), help="Output time-series file (e.g., output from 3dREMLfit)", metavar="3d+time"), 
   make_option(c("-n", "--name"), help="Sub-brick name (e.g., for bio#1_Coef the name is bio). This option will search for all sub-bricks matching that name. This optional option must be specified with -t/--type", metavar="3d+time"),
   make_option(c("-t", "--type"), help="Sub-brick type (e.g., for bio#1_Coef the type is Coef). This option will search for all sub-bricks matching that type. This optional option must be specified with -n/--name", metavar="3d+time"),
-  make_optuon(c("-d", "--datatype"), help="Set the output datatype. Options are: char, short, int, float, or double.", default="float")
+  make_option(c("-d", "--datatype"), help="Set the output datatype. Options are: char, short, int, float, or double.", default="float")
   make_option(c("-f", "--force"), action="store_true", default=FALSE, help="Will overwrite any existing output (default is to crash if output exists)."),
   make_option(c("-v", "--verbose"), action="store_true",help="Print extra output [default]"),
   make_option(c("-q", "--quiet"), action="store_false", default=FALSE, dest="verbose", help="Print little output"),
