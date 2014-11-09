@@ -40,6 +40,9 @@ if (!(opts$datatype %in% c("char", "short", "int", "float", "double"))) {
   stop("-d/--datatype must be one of char, short, int, float, or double")
 }
 
+# Check inputs
+if (!file.exists(opts$input)) stop("Input bucket doesn't exist:", opts$input)
+
 # Check outputs
 if (file.exists(opts$output)) {
   if (opts$force) {
