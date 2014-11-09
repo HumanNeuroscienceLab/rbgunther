@@ -20,6 +20,8 @@ option_list <- list(
   make_option(c("-o", "--output"), help="Output time-series file", metavar="1D"), 
   make_option(c("-w", "--weighted"), help="Take weighted average based on weights in ROI.", action="store_true", default=FALSE), 
   make_option(c("-m", "--multiple"), help="Look for multiple ROIs each with a unique value", action="store_true", default=FALSE), 
+  make_option(c("-a", "--all"), help="Spit out all the voxels in the ROI", action="store_true", default=FALSE), 
+  make_option(c("-d", "--digits"), help="Number of decimal places to keep (default is auto)", type="integer"), 
   make_option(c("-f", "--force"), action="store_true", default=FALSE, help="Will overwrite any existing output (default is to crash if output exists)."),
   make_option(c("-v", "--verbose"), action="store_true",help="Print extra output [default]"),
   make_option(c("-q", "--quiet"), action="store_false", default=FALSE, dest="verbose", help="Print little output")
@@ -42,7 +44,9 @@ if (is.null(opts$roi)) stop("You must specify the input roi -r/--roi")
 if (is.null(opts$output)) stop("You must specify the output time-series -o/--output")
 
 # Check options
-if (opts$weighted && opts$multiple) stop("Cannot have both -w/--weighted and -m/--multiple.")
+if ((opts$weighted + opts$multiple + opts$all)>1) {
+  stop("Cannot have only one of -w/--weighted, -m/--multiple, or -a/--al.")
+}
 
 # Check inputs
 if (!file.exists(opts$input)) stop("Input functional data file doesn't exist: ", opts$input)
@@ -121,6 +125,9 @@ if (opts$multiple) {
   ts <- apply(dat, 1, function(regions) {
     sum(rois * regions)
   })
+} else if (opts$all) {
+  vcat("No averaging - get all time-series in ROI")
+  ts <- dat
 } else {
   vcat("Vanilla average")
   
@@ -133,6 +140,7 @@ if (opts$multiple) {
 }
 
 ts    <- as.matrix(ts)
+if (opts$digits) ts <- round(ts, opts$digits)
 
 
 ###
