@@ -112,7 +112,7 @@ if (opts$multiple) {
   ts <- laply(1:nrois, function(ri) {
     uroi <- urois[ri]
     rowMeans(dat[,rois==uroi])
-  })
+  }, .drop=F)
   ts <- t(ts)
 } else if (opts$weighted) {
   vcat("Weighted average")
