@@ -140,7 +140,7 @@ if (opts$multiple) {
 }
 
 ts    <- as.matrix(ts)
-if (opts$digits) ts <- round(ts, opts$digits)
+if (!is.null(opts$digits)) ts <- round(ts, opts$digits)
 
 
 ###
