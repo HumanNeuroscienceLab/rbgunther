@@ -147,6 +147,7 @@ if (!is.null(opts$digits)) ts <- round(ts, opts$digits)
 # Save the time-series
 ###
 
+vcat("Saving to %s", opts$output)
 write.table(ts, file=opts$output, row.names=F, col.names=F)
 
 
