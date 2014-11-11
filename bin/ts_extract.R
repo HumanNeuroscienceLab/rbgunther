@@ -81,8 +81,8 @@ suppressMessages(library(plyr))
 
 # Load functions related to afni
 vcat("Sourcing afni_helpers.R")
-#source(file.path(scriptdir, "lib", "afni_helpers.R"))
-source(file.path("../../..", "libs", "afni_helpers.R"))
+source(file.path(scriptdir, "lib", "afni_helpers.R"))
+#source(file.path("../../..", "libs", "afni_helpers.R"))
 
 
 ###
