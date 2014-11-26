@@ -153,11 +153,12 @@ def gen_applywarp!(cmdline = ARGV, l = nil)
     -master #{target}#{ext}"
   
     if target == "standard"
-      cmd += " -nwarp 'highres2standard_WARP#{ext} #{source}2#{target}.1D'"
+      nwarp = "highres2standard_WARP#{ext} #{source}2#{target}.1D"
     else
-      cmd += " -nwarp 'standard2highres_WARP#{ext} #{source}2#{target}.1D'"
+      nwarp = "standard2highres_WARP#{ext} #{source}2#{target}.1D"
     end
-    cmd += " -affter #{mcfile}" if not mcfile.nil?
+    nwarp += " #{mcfile}" if not mcfile.nil?
+    cmd += " -nwarp '#{nwarp}'"
 
     cmd += " -dxyz #{dxyz}" if not dxyz.nil?
     cmd += " -ainterp #{interp}" if not interp.nil?
