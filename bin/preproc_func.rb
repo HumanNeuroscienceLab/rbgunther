@@ -299,7 +299,7 @@ if steps['highres']
   extra_opts = rb_opts.clone
   extra_opts[:dxyz] = res_highres unless res_highres.nil?
   gen_applywarp l, nil, :input => func.brain, :reg => func.regdir, 
-    :warp => 'exfunc-to-highres', :output => func.highres.brain, :interp => 'NN', 
+    :warp => 'exfunc-to-highres', :output => func.highres.brain, 
     :threads => threads.to_s, **extra_opts
   
   l.title "Create the underlay"
@@ -317,8 +317,8 @@ if steps['highres']
     extra_opts = rb_opts.clone
     extra_opts[:dxyz] = res_highres unless res_highres.nil?
     gen_applywarp l, nil, :input => func.raw.inputs[ri], :reg => func.regdir, 
-      :warp => 'exfunc-to-highres', :output => func.highres.mc[ri], :interp => 'NN', 
-      :threads => threads.to_s, **extra_opts
+      :mcfile => func.mc.transform[ri], :warp => 'exfunc-to-highres', 
+      :output => func.highres.mc[ri], :threads => threads.to_s, **extra_opts
     
     
     ###
@@ -395,7 +395,7 @@ if steps['standard']
   extra_opts = rb_opts.clone
   extra_opts[:dxyz] = res_standard unless res_standard.nil?
   gen_applywarp l, nil, :input => func.brain, :reg => func.regdir, 
-    :warp => 'exfunc-to-standard', :output => func.standard.brain, :interp => 'NN', 
+    :warp => 'exfunc-to-standard', :output => func.standard.brain, 
     :threads => threads.to_s, **extra_opts
   
   l.title "Create the underlay"
@@ -413,8 +413,8 @@ if steps['standard']
     extra_opts = rb_opts.clone
     extra_opts[:dxyz] = res_standard unless res_standard.nil?
     gen_applywarp l, nil, :input => func.raw.inputs[ri], :reg => func.regdir, 
-      :warp => 'exfunc-to-standard', :output => func.standard.mc[ri], :interp => 'NN', 
-      :threads => threads.to_s, **extra_opts
+      :mcfile => func.mc.transform[ri], :warp => 'exfunc-to-standard', 
+      :output => func.standard.mc[ri], :threads => threads.to_s, **extra_opts
   
     
     ###

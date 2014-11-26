@@ -1,4 +1,4 @@
-cd /mnt/nfs/psych/faceMemoryMRI/analysis/test_preproc/tb9226/anat
+Icd /mnt/nfs/psych/faceMemoryMRI/analysis/test_preproc/tb9226/anat
 antsCorticalThickness.sh -d 3 -a head.nii.gz -o ants/act \
   -e /mnt/nfs/share/OASIS-30_Atropos_template/T_template0.nii.gz \
   -t /mnt/nfs/share/OASIS-30_Atropos_template/T_template0_BrainCerebellum.nii.gz \

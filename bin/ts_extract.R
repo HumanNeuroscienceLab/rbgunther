@@ -119,17 +119,17 @@ if (opts$multiple) {
   }, .drop=F)
   ts <- t(ts)
 } else if (opts$weighted) {
-  vcat("Weighted average")
+  vcat("Weighted average of %i voxels", sum(mask))
   
   rois  <- rois/sum(rois)
   ts <- apply(dat, 1, function(regions) {
     sum(rois * regions)
   })
 } else if (opts$all) {
-  vcat("No averaging - get all time-series in ROI")
+  vcat("No averaging - get all time-series in ROI with %i voxels", sum(mask))
   ts <- dat
 } else {
-  vcat("Vanilla average")
+  vcat("Vanilla average across %i voxels", sum(mask))
   
   # check number of ROIs
   urois <- sort(unique(rois))
