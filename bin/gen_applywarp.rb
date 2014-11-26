@@ -67,6 +67,8 @@ def gen_applywarp!(cmdline = ARGV, l = nil)
     opt :output, "Output transformed image", :type => :string, :required => true
     opt :interp, "Final interpolation to use (for afni this means the --ainterp or --final) and can be NN, linear, cubic, quintic, or wsinc5", :type => :string
     opt :dxyz, "Grid of output, for instance if you want 2.5mm spacing to match your EPI", :type => :string
+    opt :short, "Will force output to be shorts (default: auto)", :default => false
+    opt :float, "Will force output to be floats (default: auto)", :default => false
     
     opt :threads, "Number of OpenMP threads to use with AFNI (otherwise defaults to environmental variable OMP_NUM_THREADS if set -> #{ENV['OMP_NUM_THREADS']})", :type => :integer
     
@@ -91,6 +93,10 @@ def gen_applywarp!(cmdline = ARGV, l = nil)
   output  = opts[:output].path.expand_path
   interp  = opts[:interp]
   dxyz    = opts[:dxyz]
+
+  if opts[:short] and opts[:float]
+    abort "Cannot specify both --short and --float"
+  end
 
   ext     = opts[:ext]
   overwrite = opts[:overwrite]
@@ -155,6 +161,7 @@ def gen_applywarp!(cmdline = ARGV, l = nil)
 
     cmd += " -dxyz #{dxyz}" if not dxyz.nil?
     cmd += " -ainterp #{interp}" if not interp.nil?
+    cmd += " -short" if opts[:short]
     cmd += " -prefix #{output}"
   
     l.cmd cmd
@@ -179,9 +186,16 @@ def gen_applywarp!(cmdline = ARGV, l = nil)
   
     cmd += " -mast_dxyz #{dxyz}" if not dxyz.nil?
     cmd += " -final #{interp}" if not interp.nil?
+    cmd += " -float" if opts[:float]
     cmd += " -prefix #{output}"
   
     l.cmd cmd
+    
+    # If force short, then do the following:
+    if opts[:short]
+      cmd "3dcalc -overwrite -a #{output} -expr 'a' -short"
+      l.cmd(cmd)
+    end
   end
 
   
