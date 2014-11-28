@@ -166,7 +166,7 @@ func = OpenStruct.new({
     prefix: "#{funcdir}/mc/func", # outprefix
     workdir: "#{funcdir}/mc_work".path, 
     output: pruns.collect{|ri| "#{funcdir}/mc/func_run#{ri}_volreg#{ext}" }, 
-    transform: pruns.collect{|ri| "#{funcdir}/mc/func_run#{ri}_mat_vr_aff12.1D" }, 
+    transform: pruns.collect{|ri| "#{funcdir}/mc/func_run#{ri}_mat_vr.aff12.1D" }, 
     maxdisp: pruns.collect{|ri| "#{funcdir}/mc/func_run#{ri}_maxdisp.1D" }, 
     motion: pruns.collect{|ri| "#{funcdir}/mc/func_run#{ri}_dfile.1D" }
   }), 
