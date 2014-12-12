@@ -151,7 +151,7 @@ def gen_applywarp!(cmdline = ARGV, l = nil)
     cmd = "3dNwarpApply \
     -source #{input} \
     -master #{target}#{ext}"
-  
+    
     if target == "standard"
       nwarp = "highres2standard_WARP#{ext} #{source}2#{target}.1D"
     else
@@ -160,7 +160,7 @@ def gen_applywarp!(cmdline = ARGV, l = nil)
     #nwarp += " #{mcfile}" if not mcfile.nil?
     cmd += " -nwarp '#{nwarp}'"
     # go back to the old way of things
-    cmd += " -affter #{mcfile}"
+    cmd += " -affter #{mcfile}" if not mcfile.nil?
     
     cmd += " -dxyz #{dxyz}" if not dxyz.nil?
     cmd += " -ainterp #{interp}" if not interp.nil?
