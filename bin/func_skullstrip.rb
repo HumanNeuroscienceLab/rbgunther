@@ -106,7 +106,7 @@ def func_skullstrip!(cmdline = ARGV, l = nil)
   # Since AFNI always outputs the mask image, we will give one if it doesn't exist
   orig_mask = mask
   mask = Tempfile.new('mask').path.path.expand_path if mask.nil?
-
+  
   l.info "Running command"
   cmd = "3dAutomask -dilate #{dilate} -prefix #{mask}"
   cmd += " -apply_prefix #{brain}" if not brain.nil?
