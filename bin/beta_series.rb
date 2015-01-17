@@ -80,6 +80,10 @@ def beta_series!(cmdline = ARGV, l = nil)
     opt :oresiduals, "Output residuals of beta-series model fitting", :default => false
     
     opt :motion, "AFNI motion parameters to include as covariates", :type => :string
+    opt :covars, "Additional covariate (e.g., compcor). Two arguments must be given: label filepath", :type => :strings
+    
+    opt :regdir, "A registration directory in the style of fsl. If given, then will transform outputs into standard space", :type => :string
+    opt :master, "Master file for registration", :type => :string
     
     opt :threads, "Number of OpenMP threads to use with AFNI (otherwise defaults to environmental variable OMP_NUM_THREADS if set -> #{ENV['OMP_NUM_THREADS']})", :type => :integer
     opt :ext, "File extensions to use in all outputs", :type => :string, :default => ".nii.gz"
@@ -105,6 +109,16 @@ def beta_series!(cmdline = ARGV, l = nil)
   oresiduals = opts[:oresiduals]
   
   motion  = opts[:motion].path.expand_path
+  covars  = opts[:covars]
+  unless covars.nil?
+    covar_label = covars[0]
+    covar_fname = covars[1].path.expand_path
+  end
+  
+  regdir      = opts[:regdir]
+  regdir      = regdir.path.expand_path unless regdir.nil?
+  master      = opts[:master]
+  master      = master.path.expand_path unless master.nil?
   
   threads     = opts[:threads]
   ext         = opts[:ext]
@@ -163,15 +177,14 @@ def beta_series!(cmdline = ARGV, l = nil)
   cmd.push "-polort #{polort}"
   
   # Stimulus options
+  refc = cmd.count
   nstims = stims.count
-  nstims = nstims + 6 unless motion.nil?
-  cmd.push "-num_stimts #{nstims}"
   stims.each_with_index do |stim,i|
     label = stim[0]; timing_fname = stim[1]; model = stim[2]
     cmd.push "-stim_times_IM #{i+1} '#{timing_fname}' '#{model}'"
     cmd.push "-stim_label #{i+1} #{label}"
     # copy over stimulus parameters
-    l.cmd "cp #{timing_fname} #{outdir}/timing_#{label}.1D"
+    l.cmd "cp #{timing_fname} #{outdir}/evs/timing_#{label}.1D"
   end
   
   # Motion covariates
@@ -184,8 +197,26 @@ def beta_series!(cmdline = ARGV, l = nil)
       cmd.push "-stim_label #{ind} #{motion_labels[i]}"
     end
     # copy over motion parameters
-    l.cmd "cp #{motion} #{outdir}/motion.1D"
+    l.cmd "cp #{motion} #{outdir}/evs/motion.1D"
+    nstims += 6
   end
+  
+  # Additional covariates
+  unless covars.nil?
+    ncovars=`head -n 1 #{covar_fname} | wc -w`.to_i    
+    (1..ncovars).each_with_index do |num,i|
+      ind = nstims + num
+      cmd.push "-stim_file #{ind} #{covar_fname}'[#{i}]'"
+      cmd.push "-stim_base #{ind}"
+      cmd.push "-stim_label #{ind} #{covar_label}_#{num}"
+    end
+    # copy over covariates
+    l.cmd "cp #{covar_fname} #{outdir}/evs/covars.1D"
+    nstims += ncovars
+  end
+  
+  # Number of stimulus time-series
+  cmd.insert(refc, "-num_stimts #{nstims}")
   
   # Output and output options
   cmd.push "-noFDR"
@@ -251,6 +282,39 @@ def beta_series!(cmdline = ARGV, l = nil)
   l.info "Copy mask and background image"
   l.cmd "fslmaths #{mask} #{outdir}/mask.nii.gz"
   l.cmd "fslmaths #{bg} #{outdir}/bgimage.nii.gz"
+  
+  
+  #--- TO STANDARD ---#
+  
+  # if given a regdir, this will transform the outputs to standard space
+  if not regdir.nil?
+    l.title "Transform output to standard space"
+    
+    l.cmd "ln -sf #{regdir} #{outdir}/reg"
+    l.cmd "mkdir #{outdir}/reg_standard 2> /dev/null"
+    
+    require 'gen_applywarp.rb'
+    warp_cmd = "exfunc-to-standard"
+    
+    reg_opts = rb_opts.clone
+    reg_opts[:master] = master unless master.nil?
+    
+    # transform mask and bg
+    gen_applywarp l, nil, :reg => regdir.to_s, :input => "#{outdir}/mask#{ext}", 
+      :warp => warp_cmd, :output => "#{outdir}/reg_standard/mask#{ext}", 
+      :interp => "nn", **reg_opts
+    gen_applywarp l, nil, :reg => regdir.to_s, :input => "#{outdir}/bgimage#{ext}", 
+      :warp => warp_cmd, :output => "#{outdir}/reg_standard/bgimage#{ext}", 
+      :interp => "spline", **reg_opts
+    
+    # transform the beta-series
+    stims.each_with_index do |stim,i|
+      label = stim[0]
+      gen_applywarp l, nil, :reg => regdir.to_s, :input => "#{outdir}/beta_series_#{label}#{ext}", 
+        :warp => warp_cmd, :output => "#{outdir}/reg_standard/beta_series_#{label}#{ext}", 
+        :interp => "spline", **reg_opts
+    end
+  end
   
   
   #--- END ---#

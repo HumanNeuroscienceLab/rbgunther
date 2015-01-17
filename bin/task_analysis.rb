@@ -115,6 +115,7 @@ def task_analysis!(cmdline = ARGV, l = nil)
   end
   
   regdir      = opts[:regdir]
+  regdir      = regdir.path.expand_path unless regdir.nil?
   
   threads     = opts[:threads]
   ext         = opts[:ext]
