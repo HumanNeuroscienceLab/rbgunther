@@ -62,6 +62,7 @@ def func_combine_runs!(cmdline = ARGV, l = nil)
     opt :outprefix, "Output prefix", :type => :string, :required => true
     opt :tr, "TR of data in seconds", :type => :string, :required => true
     opt :motion, "Path to 6 parameter motion time-series file (already concatenated across subjects). If provided, this will regress out motion effects.", :type => :string
+    opt :covars, "Additional covariate (e.g., compcor). Two arguments must be given: label filepath", :type => :strings
     opt :polort, "Number of orthogonal polynomials (default of 2 includes mean, linear, and quadratic)", :default => 2
     opt :njobs, "Number of jobs to run in parallel", :default => 1
   
@@ -82,6 +83,11 @@ def func_combine_runs!(cmdline = ARGV, l = nil)
   tr      = opts[:tr]
   motion  = opts[:motion]
   motion  = motion.path.expand_path if not motion.nil?
+  covars  = opts[:covars]
+  unless covars.nil?
+    covar_label = covars[0]
+    covar_fname = covars[1].path.expand_path
+  end
   polort  = opts[:polort]
   njobs   = opts[:njobs]
   
@@ -123,40 +129,67 @@ def func_combine_runs!(cmdline = ARGV, l = nil)
   l.info "Combine Runs"
 
   l.info "Deconvolve"
-
-  if motion.nil?
-    l.cmd "3dDeconvolve \
-          -input #{inputs.join(' ')} \
-          -mask #{mask} \
-          -force_TR #{tr} \
-          -polort #{polort} \
-          -jobs #{njobs} \
-          -noFDR \
-          -nobucket \
-          -x1D #{outmat} \
-          -xjpeg #{outpic} \
-          -errts  #{outdat}"
-  else
-    l.cmd "3dDeconvolve \
-          -input #{inputs.join(' ')} \
-          -mask #{mask} \
-          -force_TR #{tr} \
-          -polort #{polort} \
-          -num_stimts 6 \
-          -stim_file 1 #{motion}'[0]' -stim_base 1 -stim_label 1 roll  \
-          -stim_file 2 #{motion}'[1]' -stim_base 2 -stim_label 2 pitch \
-          -stim_file 3 #{motion}'[2]' -stim_base 3 -stim_label 3 yaw   \
-          -stim_file 4 #{motion}'[3]' -stim_base 4 -stim_label 4 dS    \
-          -stim_file 5 #{motion}'[4]' -stim_base 5 -stim_label 5 dL    \
-          -stim_file 6 #{motion}'[5]' -stim_base 6 -stim_label 6 dP    \
-          -jobs #{njobs} \
-          -noFDR \
-          -nobucket \
-          -x1D #{outmat} \
-          -xjpeg #{outpic} \
-          -errts  #{outdat}"
+  
+  l.title "Generating design matrix"
+  
+  l.info "Running deconvolve"
+  
+  cmd = ["3dDeconvolve"]
+  
+  # Inputs
+  str_inputs = inputs.join " "
+  cmd.push "-input #{str_inputs}"
+  cmd.push "-mask #{mask}"
+  
+  # Input options
+  cmd.push "-force_TR #{tr}"
+  
+  # Polort
+  cmd.push "-polort #{polort}"
+  
+  # Number of jobs
+  cmd.push "-jobs #{njobs}"
+  
+  # Motion covariates
+  refc = cmd.count
+  nstims = 0
+  unless motion.nil?
+    motion_labels = ['roll', 'pitch', 'yaw', 'dS', 'dL', 'dP']
+    (1..6).each_with_index do |num,i|
+      ind = nstims + num
+      cmd.push "-stim_file #{ind} #{motion}'[#{i}]'"
+      cmd.push "-stim_base #{ind}"
+      cmd.push "-stim_label #{ind} #{motion_labels[i]}"
+    end
+    nstims += 6
   end
-
+  
+  # Additional covariates
+  unless covars.nil?
+    ncovars=`head -n 1 #{covar_fname} | wc -w`.to_i    
+    (1..ncovars).each_with_index do |num,i|
+      ind = nstims + num
+      cmd.push "-stim_file #{ind} #{covar_fname}'[#{i}]'"
+      cmd.push "-stim_base #{ind}"
+      cmd.push "-stim_label #{ind} #{covar_label}_#{num}"
+    end
+    nstims += ncovars
+  end
+  
+  # Number of stimulus time-series
+  cmd.insert(refc, "-num_stimts #{nstims}")
+  
+  # Output and output options
+  cmd.push "-noFDR"
+  cmd.push "-nobucket"
+  cmd.push "-x1D #{outmat}"
+  cmd.push "-xjpeg #{outpic}"
+  cmd.push "-errts #{outdat}"
+  
+  # combine and run
+  l.cmd cmd.join(" ")
+  
+  # Add back mean to residuals
   l.info "Add back mean"
   l.cmd "3dTcat -prefix #{outprefix}_tmp_all_runs#{ext} #{inputs.join(' ')}"
   l.cmd "3dTstat -mean -prefix #{outmean} #{outprefix}_tmp_all_runs#{ext}"

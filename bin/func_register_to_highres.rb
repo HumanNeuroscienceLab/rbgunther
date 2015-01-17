@@ -50,34 +50,78 @@ def func_register_to_highres!(cmdline = ARGV, l = nil)
   ###
   # USER ARGS
   ###
-
-  # Process command-line inputs
+  
+  # GLOBAL
+#  sub_commands = %w(afni fsl)
+#  global_opts = Trollop::options do    
   p = Trollop::Parser.new do
-    banner "Usage: #{File.basename($0)} -e example_func_brain.nii.gz -a highres_brain.nii.gz -o output-directory (-w working-directory)\n"
+    banner "Register highres to standard." 
+       
+    #banner "\nOptions common to all registration approaches are given first followed by the name of the approach (afni or fsl) to use and then approach specific options. In the usage, anything in [] are required options while anything in () are optional."
+    #banner "\nUsage: #{File.basename($0)} [-e example_func_brain.nii.gz -a highres_brain.nii.gz -o output-directory] (--ext .nii.gz --log log_outprefix --short --float) [method] (afni: --dof option --cost approach -w working-directory --threads num_of_threads) (fsl: --anat-head highres_head.nii.gz --wm-seg highres_wmseg.nii.gz)"
+    banner "\nUsage: #{File.basename($0)} [-e example_func_brain.nii.gz -a highres_brain.nii.gz -o output-directory] (--ext .nii.gz --log log_outprefix --short --float --anathead highres_head.nii.gz --wm-seg highres_wmseg.nii.gz)"
+    
+    #banner "\nUsage: #{File.basename($0)} ... afni --help"
+    #banner "\nUsage: #{File.basename($0)} ... fsl --help"
+    banner ""
+    
     opt :epi, "Input functional brain (must be skull stripped)", :type => :string, :required => true
     opt :anat, "Input anatomical brain (must be skull stripped)", :type => :string, :required => true  
     opt :output, "Path to output directory", :type => :string, :required => true
-  
-    opt :dof, "Degrees of Freedom: shift_only (3), shift_rotate (6), shift_rotate_scale (9), or affine_general (12)", :type => :string, :default => "shift_rotate_scale"
-    opt :cost, "Cost Function", :type => :string, :default => "lpc+ZZ"
-  
-    opt :working, "Path to save working directory (at the end)", :type => :string
     
-    opt :threads, "Number of OpenMP threads to use with AFNI (otherwise defaults to environmental variable OMP_NUM_THREADS if set -> #{ENV['OMP_NUM_THREADS']})", :type => :integer
+    opt :anathead, "Input anatomical brain (must be skull stripped) (only method fsl)", :type => :string, :required => true
+    opt :wmseg, "White matter segmentation (only method fsl)", :type => :string
     
     opt :log, "Prefix for logging output to json and text files", :type => :string
-    opt :ext, "File extensions to use in all outputs", :type => :string, :default => ".nii.gz"
-    opt :overwrite, "Overwrite existing output", :default => false
+    opt :ext, "File extensions to use in all inputs", :type => :string, :default => ".nii.gz"
+    opt :overwrite, "Overwrite any output", :default => false
+    
+    #stop_on sub_commands
   end
   opts = Trollop::with_standard_exception_handling p do
     raise Trollop::HelpNeeded if cmdline.empty? # show help screen
     p.parse cmdline
   end
 
+  #cmd = ARGV.shift # get the subcommand
+  #cmd_opts = case cmd
+  #  when "afni" # parse delete options
+  #    Trollop::options do
+  #      opt :dof, "Degrees of Freedom: shift_only (3), shift_rotate (6), shift_rotate_scale (9), or affine_general (12)", :type => :string, :default => "shift_rotate_scale"
+  #      opt :cost, "Cost Function", :type => :string, :default => "lpc+ZZ"
+  #      opt :working, "Path to save working directory at the end (only method afni)", :type => :string
+  #      opt :threads, "Number of OpenMP threads to use with AFNI (otherwise defaults to environmental variable OMP_NUM_THREADS if set -> #{ENV['OMP_NUM_THREADS']}) (only method afni)", :type => :integer
+  #    end
+  #  when "fsl"  # parse copy options
+  #    Trollop::options do
+  #      opt :anat_head, "Input anatomical brain (must be skull stripped) (only method fsl)", :type => :string, :required => true
+  #      opt :wmseg, "White matter segmentation (only method fsl)", :type => :string
+  #    end
+  #  else
+  #    Trollop::die "unknown subcommand #{cmd.inspect}"
+  #  end
+  #
+  #puts "Global options: #{global_opts.inspect}"
+  #puts "Subcommand: #{cmd.inspect}"
+  #puts "Subcommand options: #{cmd_opts.inspect}"
+  #puts "Remaining arguments: #{ARGV.inspect}"
+  #
+  ## Combine options
+  #method = cmd
+  #opts = global_opts.merge(cmd_opts)
+  
+  cmd = 'fsl'
+  method = cmd
+  
   # Gather inputs
   epi       = opts[:epi].path.expand_path
   anat      = opts[:anat].path.expand_path
-
+  
+  anathead  = opts[:anathead]
+  anathead  = anathead.path.expand_path if not anathead.nil?
+  wmseg     = opts[:wmseg]
+  wmseg     = wmseg.path.expand_path if not wmseg.nil?
+  
   dof       = opts[:dof]
   cost      = opts[:cost]
 
@@ -100,16 +144,19 @@ def func_register_to_highres!(cmdline = ARGV, l = nil)
   # RUN COMMANDS
   ###
   
-  # Set AFNI_DECONFLICT
-  set_afni_to_overwrite if overwrite
-  # Set Threads
-  set_omp_threads threads if not threads.nil?
+  if method == "afni"
+    # Set AFNI_DECONFLICT
+    set_afni_to_overwrite if overwrite
+    # Set Threads
+    set_omp_threads threads if not threads.nil?
+  end
+  
   
   ###
   # Checks and Setup
   ###
 
-  l.info "Checks and Setup"
+  l.title "Checks and Setup"
 
   l.info "Checking inputs"
   quit_if_inputs_dont_exist l, epi, anat
@@ -117,119 +164,140 @@ def func_register_to_highres!(cmdline = ARGV, l = nil)
   l.info "Checking outputs"
   quit_if_all_outputs_exist l, outdir if not overwrite
   quit_if_all_outputs_exist l, workdir if not overwrite and not workdir.nil?
-
-  l.info "Creating and changing into temporary working directory"
-  Dir.mktmpdir do |tmpworkdir|
-    l.info "Changing directory to #{tmpworkdir}"
-    Dir.chdir tmpworkdir
   
-    ###
-    # Get inputs
-    ###
+  l.info "Creating output directory '#{outdir}' if needed"
+  outdir.mkdir if not outdir.directory?
+  
+  l.info "Changing directory to #{outdir}"
+  Dir.chdir outdir
 
-    l.info "Copying Inputs"
+  l.info "Copy files"
+  l.cmd "3dcalc -a #{epi} -expr a -prefix #{outdir}/exfunc#{ext} -datum float"
+  l.cmd "3dcalc -a #{anat} -expr a -prefix #{outdir}/highres#{ext} -datum float"
+  
+  
+  ###
+  # AFNI
+  ###
+  
+  if method == "afni"
+    l.info "Creating and changing into temporary working directory"
+    Dir.mktmpdir do |tmpworkdir|
+      l.info "Changing directory to #{tmpworkdir}"
+      Dir.chdir tmpworkdir
+  
+      ###
+      # Get inputs
+      ###
 
-    l.cmd "3dcopy #{epi} #{tmpworkdir}/exfunc+orig"
-    l.cmd "3dcopy #{anat} #{tmpworkdir}/highres+orig"
+      l.info "Copying Inputs"
+
+      l.cmd "3dcopy #{epi} #{tmpworkdir}/exfunc+orig"
+      l.cmd "3dcopy #{anat} #{tmpworkdir}/highres+orig"
 
 
-    ###
-    # Build and run the command
-    ###
+      ###
+      # Build and run the command
+      ###
 
-    l.info "Build and run main command"
+      l.info "Build and run main command"
 
-    cmd = "align_epi_anat.py -epi2anat \
-    -epi exfunc+orig -epi_base 0 -anat highres+orig \
-    -master_epi BASE \
-    -cost #{cost} \
-    -deoblique on -volreg off -tshift off \
-    -anat_has_skull no -epi_strip None \
-    -big_move \
-    -Allineate_opts '-weight_frac 1.0 -maxrot 10 -maxshf 10 -VERB -warp #{dof} ' \
-    -suffix _out"
+      cmd = "align_epi_anat.py -epi2anat \
+      -epi exfunc+orig -epi_base 0 -anat highres+orig \
+      -master_epi BASE \
+      -cost #{cost} \
+      -deoblique on -volreg off -tshift off \
+      -anat_has_skull no -epi_strip None \
+      -big_move \
+      -Allineate_opts '-weight_frac 1.0 -maxrot 10 -maxshf 10 -VERB -warp #{dof} ' \
+      -suffix _out"
+      l.cmd cmd
+  
+  
+      ###
+      # Copy outputs
+      ###
+      
+      if overwrite
+        cp = "cp -f"
+      else
+        cp = "cp"
+      end
+      l.cmd "#{cp} #{tmpworkdir}/exfunc_out_mat.aff12.1D #{outdir}/exfunc2highres.1D" # transform mat
+      # l.cmd "3dcopy #{tmpworkdir}/exfunc_out+orig #{outdir}/exfunc2highres#{ext}"     # transform img
+  
+      
+      ###
+      # Register
+      ###
+  
+      l.info "Transforming exfunc to highres in highres space"
+      l.cmd "3dAllineate -input #{outdir}/exfunc#{ext} \
+        -base #{outdir}/highres#{ext} \
+        -1Dmatrix_apply #{outdir}/exfunc2highres.1D \
+        -master BASE \
+        -prefix #{outdir}/exfunc2highres#{ext}"
+  
+      l.info "Inverting affine matrix (highres -> func)"
+      l.cmd "3dNwarpCat -prefix #{outdir}/highres2exfunc.1D -iwarp -warp1 #{outdir}/exfunc2highres.1D"
+      
+      
+      ###
+      # Copy working directory
+      ###
+
+      l.info "Cleaning Up"
+
+      if not workdir.nil?
+        l.info "Saving working directory"
+        FileUtils.cp Dir.glob("#{tmpworkdir}/*"), workdir
+    #    FileUtils.remove Dir.glob("#{tmpworkdir}/*"), :verbose => true
+      end  
+    end # end of temporary directory      
+  elsif method == "fsl"
+    l.info "Transforming exfunc to highres with BBR"
+    cmd = "epi_reg --epi=#{epi} --t1=#{anathead} --t1brain=#{anat} --out=#{outdir}/exfunc2highres"
+    cmd += " --wmseg=#{wmseg}"
     l.cmd cmd
-  
-  
-    ###
-    # Copy outputs
-    ###
-
-    l.info "Set outputs"
-  
-    l.info "Creating output directory '#{outdir}' if needed"
-    outdir.mkdir if not outdir.directory?
-  
-    l.info "Changing directory to #{outdir}"
-    Dir.chdir outdir
-
-    l.info "Copy files"
-    if overwrite
-      cp = "cp -f"
-    else
-      cp = "cp"
-    end
-    l.cmd "#{cp} #{tmpworkdir}/exfunc_out_mat.aff12.1D #{outdir}/exfunc2highres.1D" # transform mat
-    # l.cmd "3dcopy #{tmpworkdir}/exfunc_out+orig #{outdir}/exfunc2highres#{ext}"     # transform img
-    l.cmd "3dcopy #{epi} #{outdir}/exfunc#{ext}"
-    l.cmd "3dcopy #{anat} #{outdir}/highres#{ext}"
-  
-    l.info "Transforming exfunc to highres in highres space"
-    l.cmd "3dAllineate -input #{outdir}/exfunc#{ext} \
-      -base #{outdir}/highres#{ext} \
-      -1Dmatrix_apply #{outdir}/exfunc2highres.1D \
-      -master BASE \
-      -prefix #{outdir}/exfunc2highres#{ext}"
-  
+    
     l.info "Inverting affine matrix (highres -> func)"
-    l.cmd "3dNwarpCat -prefix #{outdir}/highres2exfunc.1D -iwarp -warp1 #{outdir}/exfunc2highres.1D"
-    
-    
-    ###
-    # Copy working directory
-    ###
-
-    l.info "Cleaning Up"
-
-    if not workdir.nil?
-      l.info "Saving working directory"
-      FileUtils.cp Dir.glob("#{tmpworkdir}/*"), workdir
-  #    FileUtils.remove Dir.glob("#{tmpworkdir}/*"), :verbose => true
-    end  
-  end # end of temporary directory
+    l.cmd "convert_xfm -inverse -omat #{outdir}/highres2exfunc.mat #{outdir}/exfunc2highres.mat"
+  end
   
   
   ###
   # Pictures
   ###
-
+  
   l.info "Pretty Pictures"
-
+  
   if overwrite
     sl_opts=" --force" # for slicer.py
   else
     sl_opts=""
   end
-
+  
   l.cmd "slicer.py#{sl_opts} --auto -r #{outdir}/highres#{ext} #{outdir}/exfunc2highres#{ext} #{outdir}/exfunc2highres.png"
-
-
+  
+  
   ###
   # Quality Check
   ###
-
+  
   l.info "Correlating highres with standard"
-
+  
   cor_lin = `3ddot -docor -mask #{outdir}/highres#{ext} #{outdir}/exfunc2highres#{ext} #{outdir}/highres#{ext}`.strip.to_f
-
+  
   l.info "linear exfunc2highres vs highres: #{cor_lin}"
   l.info "saving this to file: #{outdir}/quality_exfunc2highres.txt"
   File.open('quality_exfunc2highres.txt', 'w') do |f1|
     f1.puts "#{cor_lin} # exfunc2highres vs highres\n"
   end
   
-  # Unset AFNI_DECONFLICT
-  reset_afni_deconflict if overwrite
+  if method == "afni"
+    # Unset AFNI_DECONFLICT
+    reset_afni_deconflict if overwrite
+  end
 end
 
 

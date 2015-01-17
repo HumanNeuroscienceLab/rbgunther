@@ -27,6 +27,9 @@ if __FILE__==$0
   SCRIPTDIR   = Pathname.new(__FILE__).realpath.dirname.dirname
   SCRIPTNAME  = Pathname.new(__FILE__).basename.sub_ext("")
 
+  CDIR        = SCRIPTDIR + "bin/"
+  DDIR        = SCRIPTDIR + "data/"
+  
   # add lib directory to ruby path
   $: << SCRIPTDIR + "lib" # will be scriptdir/lib
   $: << SCRIPTDIR + "bin" unless $:.include?(SCRIPTDIR + "bin")

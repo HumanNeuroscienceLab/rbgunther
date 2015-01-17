@@ -50,29 +50,68 @@ def anat_register_to_standard!(cmdline = ARGV, l = nil)
   # USER ARGS
   ###
   
-  # Process command-line inputs
-  p = Trollop::Parser.new do
-    banner "Usage: #{Pathname.new(__FILE__).basename} -i anat_brain.nii.gz -o output_directory (--overwrite)\n"
+  # GLOBAL
+  sub_commands = %w(afni fsl)
+  global_opts = Trollop::options do
+    banner "Register highres to standard."
+    
+    banner "\nOptions common to all registration approaches are given first followed by the name of the approach (afni or fsl) to use and then approach specific options. In the usage, anything in [] are required options while anything in () are optional."
+    
+    banner "\nUsage: #{File.basename($0)} [-i anat_brain.nii.gz -o output_directory] (--template MNI152_T1_2mm_brain.nii.gz --ext .nii.gz --log log_outprefix --overwrite) [method] (afni: --threads num_of_threads) (fsl: --input-head highres_head.nii.gz --template-head MNI152_T1_2mm.nii.gz)"
+    
+    banner "\n#{File.basename($0)} ... afni --help"
+    banner "\n#{File.basename($0)} ... fsl --help"
+    banner ""
+    
     opt :input, "Anatomical brain or could be any other input", :type => :string, :required => true
-    opt :template, "Template brain to be the target of warping", :type => :string, :default => File.join(ENV['FSLDIR'], "data", "standard", "MNI152_T1_1mm_brain.nii.gz")
+    opt :template, "Template brain to be the target of warping", :type => :string, :default => File.join(ENV['FSLDIR'], "data", "standard", "MNI152_T1_2mm_brain.nii.gz")
     opt :output, "Path to output directory", :type => :string, :required => true
     
-    opt :threads, "Number of OpenMP threads to use with AFNI (otherwise defaults to environmental variable OMP_NUM_THREADS if set -> #{ENV['OMP_NUM_THREADS']})", :type => :integer
-    
     opt :log, "Prefix for logging output to json and text files", :type => :string
-    opt :ext, "File extensions to use in all outputs", :type => :string, :default => ".nii.gz"
+    opt :ext, "File extensions to use in all inputs", :type => :string, :default => ".nii.gz"
     opt :overwrite, "Overwrite any output", :default => false
+    
+    stop_on sub_commands
   end
-  opts = Trollop::with_standard_exception_handling p do
-    raise Trollop::HelpNeeded if cmdline.empty? # show help screen
-    p.parse cmdline
-  end
+
+  cmd = ARGV.shift # get the subcommand
+  cmd_opts = case cmd
+    when "afni" # parse delete options
+      Trollop::options do
+        opt :threads, "Number of OpenMP threads to use with AFNI (otherwise defaults to environmental variable OMP_NUM_THREADS if set -> #{ENV['OMP_NUM_THREADS']}) (only method afni)", :type => :integer
+      end
+    when "fsl"  # parse copy options
+      Trollop::options do
+        opt :input_head, "Input anatomical with head (only method fsl)", :type => :string, :required => true
+        opt :template_head, "Template head to be the target of warping (only method fsl)", :type => :string, :default => File.join(ENV['FSLDIR'], "data", "standard", "MNI152_T1_2mm.nii.gz")
+        opt :template_mask, "Template head to be the target of warping (only method fsl)", :type => :string, :default => File.join(ENV['FSLDIR'], "data", "standard", "MNI152_T1_2mm_brain_mask_dil.nii.gz")
+      end
+    else
+      Trollop::die "unknown subcommand #{cmd.inspect}"
+    end
+
+  puts "Global options: #{global_opts.inspect}"
+  puts "Subcommand: #{cmd.inspect}"
+  puts "Subcommand options: #{cmd_opts.inspect}"
+  puts "Remaining arguments: #{ARGV.inspect}"
+  
+  # Combine options
+  method = cmd
+  opts = global_opts.merge(cmd_opts)
+  
 
   # Gather inputs
   input   = opts[:input].path.expand_path
   template= opts[:template].path.expand_path
   outdir  = opts[:output].path.expand_path
-
+  
+  anat_head  = opts[:input_head]
+  anat_head  = anat_head.path.expand_path if not anat_head.nil?
+  template_head  = opts[:template_head]
+  template_head  = template_head.path.expand_path if not template_head.nil?
+  template_mask  = opts[:template_mask]
+  template_mask  = template_mask.path.expand_path if not template_mask.nil?
+  
   ext        = opts[:ext]
   overwrite  = opts[:overwrite]
   log_prefix = opts[:log]
@@ -104,71 +143,133 @@ def anat_register_to_standard!(cmdline = ARGV, l = nil)
   Dir.chdir outdir
 
   l.info "Setup"
-  # Set AFNI_DECONFLICT
-  set_afni_to_overwrite if overwrite
-  # Set Threads
-  set_omp_threads threads if not threads.nil?
-
-
+  if method == "afni"
+    # Set AFNI_DECONFLICT
+    set_afni_to_overwrite if overwrite
+    # Set Threads
+    set_omp_threads threads if not threads.nil?
+  end
+  
+  
   ###
   # Setup Standard Brain
   ###
-
-  l.info "Unifize the standard brain"
+  
   l.cmd "3dcopy #{template} standard#{ext}"
-  l.cmd "3dUnifize -input standard#{ext} -GM -prefix standard_unifized#{ext}"
-
-
+  
+  
   ###
   # Setup Anatomical Brain
   ###
-
-  l.info "Unifize anatomical brain"
+  
   l.cmd "3dcopy #{input} highres#{ext}"
-  l.cmd "3dUnifize -GM -prefix highres_unifized#{ext} -input highres#{ext}"
+  
+  
+  if method == "afni"
+    
+    l.info "Unifize the standard brain"
+    l.cmd "3dUnifize -input standard#{ext} -GM -prefix standard_unifized#{ext}"
+    
+    l.info "Unifize anatomical brain"
+    l.cmd "3dUnifize -GM -prefix highres_unifized#{ext} -input highres#{ext}"
+    
+  
+    ###
+    # Do Linear Registration
+    ###
+
+    l.info "Linear registration"
+    # Parametric registration, linear interpolation by default for optimization, cubic interpolation for final transformation
+    # Not sure if I need source automask
+    l.cmd "3dAllineate \
+    -source highres_unifized#{ext} -source_automask \
+    -base standard_unifized#{ext} \
+    -prefix highres2standard_linear#{ext} \
+    -1Dmatrix_save highres2standard.1D \
+    -twopass -cost lpa \
+    -autoweight -fineblur 3 -cmass"
+
+    l.info "Inverting affine matrix"
+    l.cmd "3dNwarpCat -prefix standard2highres.1D -iwarp -warp1 highres2standard.1D"
 
 
-  ###
-  # Do Linear Registration
-  ###
+    ###
+    # Do Non-Linear Registration
+    ###
 
-  l.info "Linear registration"
-  # Parametric registration, linear interpolation by default for optimization, cubic interpolation for final transformation
-  # Not sure if I need source automask
-  l.cmd "3dAllineate \
-  -source highres_unifized#{ext} -source_automask \
-  -base standard_unifized#{ext} \
-  -prefix highres2standard_linear#{ext} \
-  -1Dmatrix_save highres2standard.1D \
-  -twopass -cost lpa \
-  -autoweight -fineblur 3 -cmass"
+    l.info "Non-Linear registration"
 
-  l.info "Inverting affine matrix"
-  l.cmd "3dNwarpCat -prefix standard2highres.1D -iwarp -warp1 highres2standard.1D"
+    # Non-parametric registration, uses cubic and Hermite quintic basis functions
+    l.cmd "3dQwarp \
+    -source highres2standard_linear#{ext} \
+    -base standard_unifized#{ext} \
+    -prefix highres2standard#{ext} \
+    -duplo -useweight -nodset -blur 0 3"
 
+    # Apply that warp to the original input
+    l.cmd "3dNwarpApply \
+    -nwarp 'highres2standard_WARP#{ext} highres2standard.1D' \
+    -source highres#{ext} \
+    -master standard#{ext} \
+    -prefix highres2standard#{ext}"
 
-  ###
-  # Do Non-Linear Registration
-  ###
+    l.info "Inverting warp"
+    l.cmd "3dNwarpCat -prefix standard2highres_WARP#{ext} -iwarp -warp1 highres2standard_WARP#{ext}"
+  
+  elsif method == "fsl"
+    
+    ###
+    # Setup Anatomical
+    ###
 
-  l.info "Non-Linear registration"
-
-  # Non-parametric registration, uses cubic and Hermite quintic basis functions
-  l.cmd "3dQwarp \
-  -source highres2standard_linear#{ext} \
-  -base standard_unifized#{ext} \
-  -prefix highres2standard#{ext} \
-  -duplo -useweight -nodset -blur 0 3"
-
-  # Apply that warp to the original input
-  l.cmd "3dNwarpApply \
-  -nwarp 'highres2standard_WARP#{ext} highres2standard.1D' \
-  -source highres#{ext} \
-  -master standard#{ext} \
-  -prefix highres2standard#{ext}"
-
-  l.info "Inverting warp"
-  l.cmd "3dNwarpCat -prefix standard2highres_WARP#{ext} -iwarp -warp1 highres2standard_WARP#{ext}"
+    l.info "Setup heads and mask"
+    l.cmd "3dcopy #{anat_head} highres_head#{ext}"
+    l.cmd "3dcopy #{template_head} standard_head#{ext}"
+    l.cmd "3dcopy #{template_mask} standard_mask#{ext}"
+    
+    
+    ###
+    # Do Linear Registration
+    ###
+    
+    l.info "Linear registration"
+    l.cmd "flirt \
+    -in highres \
+    -ref standard \
+    -out highres2standard_linear \
+    -omat highres2standard.mat \
+    -cost corratio \
+    -dof 12 -searchrx -90 90 -searchry -90 90 -searchrz -90 90 \
+    -interp trilinear"
+    
+    l.info "Inverting affine matrix"
+    l.cmd "convert_xfm -inverse -omat standard2highres.mat highres2standard.mat"
+    
+    
+    ###
+    # Do Linear Registration
+    ###
+    
+    l.info "Non-linear registration"
+    l.cmd "fnirt \
+    --iout=highres2standard_head \
+    --in=highres_head \
+    --aff=highres2standard.mat \
+    --cout=highres2standard_warp \
+    --iout=highres2standard \
+    --jout=highres2highres_jac \
+    --config=T1_2_MNI152_2mm \
+    --ref=standard_head \
+    --refmask=standard_mask \
+    --warpres=10,10,10"
+    
+    l.info "Apply non-linear registration"
+    l.cmd "applywarp -i highres -r standard -o highres2standard -w highres2standard_warp"
+    
+    l.info "Invert non-linear warp"
+    l.cmd "invwarp -w highres2standard_warp -r highres_head -o standard2highres_warp"
+    
+  end
 
 
   ###
@@ -210,9 +311,12 @@ def anat_register_to_standard!(cmdline = ARGV, l = nil)
   ###
 
   l.info "Clean up"
-  # Unset AFNI_DECONFLICT
-  reset_afni_deconflict if overwrite
+  if method == "afni"
+    # Unset AFNI_DECONFLICT
+    reset_afni_deconflict if overwrite
+  end
 end
+
 
 
 # If script called from the command-line

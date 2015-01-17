@@ -14,7 +14,7 @@
 #  Created by Zarrar Shehzad on 2014-12-20
 # 
 
-#require 'pry'
+require 'pry'
 #binding.pry
 
 
@@ -33,6 +33,9 @@ require 'tempfile'
 if __FILE__==$0
   SCRIPTDIR   = Pathname.new(__FILE__).realpath.dirname.dirname
   SCRIPTNAME  = Pathname.new(__FILE__).basename.sub_ext("")
+
+  CDIR        = SCRIPTDIR + "bin/"
+  DDIR        = SCRIPTDIR + "data/"
 
   # add lib directory to ruby path
   $: << SCRIPTDIR + "lib" # will be scriptdir/lib
@@ -61,15 +64,17 @@ def func_filter!(cmdline = ARGV, l = nil)
 
   # Process command-line inputs
   p = Trollop::Parser.new do
-    banner "Usage: #{File.basename($0)} -o output-directory -w working-directory --keepworking -i func-file1 ... func-fileN\n"
+    banner "Usage: #{File.basename($0)} -o output-directory -w working-directory --keepworking -i func-file1 ... func-fileN --fwhm X --hp X\n"
     opt :inputs, "Path to functional runs to preprocess", :type => :strings, :required => true
     opt :outdir, "Output directory", :type => :string, :required => true
     opt :working, "Path to working directory", :type => :string, :required => true
     opt :keepworking, "Keep working directory", :default => false
     
-    opt :fwhm, "Smoothness level in mm (0 = skip)", :type => :float, :required => true
-    opt :hp, "High-pass filter in seconds (-1 = skip)", :type => :float, :required => true
-    opt :lp, "Low-pass filter in seconds (-1 = skip)", :type => :float, :required => true, :default => -1
+    opt :fwhm, "Smoothness level in mm (0 = skip)", :type => :string, :required => true
+    opt :hp, "High-pass filter in seconds (-1 = skip)", :type => :string, :required => true
+    opt :lp, "Low-pass filter in seconds (-1 = skip)", :type => :string, :default => "-1"
+    
+    opt :mcdir, "Previously run mc directory", :type => :string
     
     opt :log, "Prefix for logging output to json and text files", :type => :string
     opt :ext, "File extensions to use in all outputs", :type => :string, :default => ".nii.gz"
@@ -81,7 +86,7 @@ def func_filter!(cmdline = ARGV, l = nil)
   end
   
   # Gather inputs
-  inputs  = opts[:inputs].collect{|input| input.path.expand_path}
+  inputs  = opts[:inputs].collect{|input| input.path.expand_path.to_s }
   outdir  = opts[:outdir].path.expand_path
   workdir = opts[:working].path.expand_path
   workprefix = "prefiltered_func_data"
@@ -90,9 +95,12 @@ def func_filter!(cmdline = ARGV, l = nil)
   ext         = opts[:ext]
   overwrite   = opts[:overwrite]
   
-  fwhm        = fwhm
-  hp          = hp
-  lp          = lp
+  fwhm        = opts[:fwhm].to_f
+  hp          = opts[:hp].to_f
+  lp          = opts[:lp].to_f
+  
+  mcdir       = opts[:mcdir]
+  mcdir       = mcdir.path.expand_path unless mcdir.nil?
   
   log_prefix  = opts[:log]
   log_prefix  = log_prefix.path.expand_path unless log_prefix.nil?
@@ -121,7 +129,7 @@ def func_filter!(cmdline = ARGV, l = nil)
   set_afni_to_overwrite if overwrite
 
   l.info "Checking inputs"
-  l.fatal("inputs don't exist") if any_inputs_dont_exist l, exfunc, infunc
+  l.fatal("inputs don't exist") if any_inputs_dont_exist l, *inputs
 
   l.info "Checking outputs"
   l.fatal("working directory '#{workdir}' exists, exiting") if !overwrite and workdir.exist?
@@ -138,9 +146,15 @@ def func_filter!(cmdline = ARGV, l = nil)
 
   l.title "Motion Correct"
   
-  require 'func_motion_correct.rb'
-  func_motion_correct l, nil, :inputs => inputs, :outprefix => "#{outdir}/mc/func", 
-    :working => "#{outdir}/mc_work", :keepworking => keepwork, **rb_opts
+  if mcdir.nil?  
+    require 'func_motion_correct.rb'
+    func_motion_correct l, nil, :inputs => inputs, :outprefix => "#{outdir}/mc/func", 
+      :working => "#{outdir}/mc_work", :keepworking => keepwork, **rb_opts
+    l.info "Changing directory to '#{workdir}'"
+    Dir.chdir workdir
+  else
+    l.cmd "ln -sf #{mcdir} #{outdir}/mc"
+  end
   
   
   #--- SKULL STRIP ---#
@@ -148,7 +162,7 @@ def func_filter!(cmdline = ARGV, l = nil)
   l.title "Skull Strip"
   
   l.info "Bet"
-  l.cmd "bet2 #{outdir}/mc/func_mean#{ext} -f 0.3 -n -m mask"
+  l.cmd "bet2 #{outdir}/mc/func_mean mask -f 0.3 -n -m"
   l.cmd "immv mask_mask mask1"
   
   l.info "Apply initial masks"
@@ -177,7 +191,7 @@ def func_filter!(cmdline = ARGV, l = nil)
     return (sorted[(len - 1) / 2] + sorted[len / 2]) / 2.0
   end
   median_vals = pruns.each.collect do |run|
-    `fslmaths #{workprefix}_bet -k mask2`.to_f
+    `fslstats #{workprefix}_bet_run#{run} -k mask2 -p 50`.to_f
   end
   median_val = median(median_vals)
   l.info "... median = #{median_val}"
@@ -194,7 +208,7 @@ def func_filter!(cmdline = ARGV, l = nil)
   pruns.each do |run|
     l.cmd "fslmaths #{workprefix}_thresh_run#{run} -Tmean mean_func_run#{run}"
   end
-  l.cmd "3dMean -prefix mean_func#{ext} mean_func_run*#{ext}"
+  l.cmd "3dMean -overwrite -prefix mean_func#{ext} mean_func_run*#{ext}"
   
   
   #--- SMOOTHING ---#
@@ -206,7 +220,7 @@ def func_filter!(cmdline = ARGV, l = nil)
     pruns.each do |run|
       l.cmd "ln -sf #{workprefix}_thresh_run#{run}#{ext} #{workprefix}_smooth_run#{run}#{ext}"
     end
-  else  
+  else
     l.info "Smoothing to #{fwhm}mm"
     brightness_thr = median_val.to_f * 0.75
     sigma = fwhm / Math.sqrt(8 * Math.log(2))
@@ -231,16 +245,27 @@ def func_filter!(cmdline = ARGV, l = nil)
   
   l.title "Band-Pass Filter"
   
-  hp_sigma=hp/2.0 unless hp == -1
-  lp_sigma=lp/2.0 unless lp == -1
+  if hp == -1
+    hp_sigma = -1
+  else
+    hp_sigma = hp/2.0
+  end
+  
+  if lp == -1
+    lp_sigma = -1
+  else
+    lp_sigma = lp/2.0
+  end
   
   if (hp == -1) and (lp == -1)
     l.info "Skipping filter"
     l.cmd "ln -sf #{workprefix}_intnorm_run#{run} #{workprefix}_tempfilt_run#{run}"
   else
-    l.cmd "Filtering"
-    l.cmd "fslmaths #{workprefix}_intnorm_run#{run} -Tmean #{workprefix}_tempMean_run#{run}"
-    l.cmd "fslmaths #{workprefix}_intnorm_run#{run} -bptf #{hp_sigma} #{lp_sigma} -add #{workprefix}_tempMean_run#{run} #{workprefix}_tempfilt_run#{run}"
+    l.info "Filtering"
+    pruns.each do |run|
+      l.cmd "fslmaths #{workprefix}_intnorm_run#{run} -Tmean #{workprefix}_tempMean_run#{run}"
+      l.cmd "fslmaths #{workprefix}_intnorm_run#{run} -bptf #{hp_sigma} #{lp_sigma} -add #{workprefix}_tempMean_run#{run} #{workprefix}_tempfilt_run#{run}"
+    end
   end
   
   

@@ -90,6 +90,11 @@ rb_opts = {}
 rb_opts[:overwrite] = true if overwrite
 rb_opts[:ext] = ext
 
+str_rb_opts = []
+str_rb_opts.push "--overwrite" if overwrite
+str_rb_opts.push "--ext #{ext}"
+str_rb_opts = str_rb_opts.join " "
+
 # just to the standard output for now
 l = create_logger()
 
@@ -158,7 +163,7 @@ anat_skullstrip l, nil, :head => anat.head, :outdir => outdir.to_s, :freedir => 
 
 l.title "Register anatomical to standard space"
 require 'anat_register_to_standard.rb'
-anat_register_to_standard l, nil, :input => anat.brain, :template => template.to_s, :output => anat.regdir, :threads => threads.to_s, **rb_opts
+anat_register_to_standard! "--input #{anat.brain} --input-head #{anat.head} --template #{template.to_s} --template-head #{template_head.to_s} -o #{anat.regdir} #{str_rb_opts}", l
 
 
 ###

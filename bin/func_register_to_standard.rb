@@ -57,23 +57,57 @@ def func_register_to_standard!(cmdline = ARGV, l = nil)
   ###
   # USER ARGS
   ###
-
-  # Process command-line inputs
+  
+  # GLOBAL
+#  sub_commands = %w(afni fsl)
+#  global_opts = Trollop::options do
   p = Trollop::Parser.new do
-    banner "Usage: #{File.basename($0)} -e func-regdir -a anat-regdir (--overwrite)\n"
+    banner "Register highres to standard."
+    
+#    banner "\nOptions common to all registration approaches are given first followed by the name of the approach (afni or fsl) to use and then approach specific options. In the usage, anything in [] are required options while anything in () are optional."
+    
+ #   banner "\nUsage: #{File.basename($0)} [-e func-regdir -a anat-regdir] (--ext .nii.gz --log log_outprefix --overwrite) [method] (afni: --threads num_of_threads) (fsl: none)"
+    banner "\nUsage: #{File.basename($0)} [-e func-regdir -a anat-regdir] (--ext .nii.gz --log log_outprefix --overwrite)"
+    
+#    banner "\nUsage: #{File.basename($0)} ... afni"
+    
     opt :epireg, "Outputs of previously run func-to-highres registration directory", :type => :string, :required => true
     opt :anatreg, "Outputs of previously run highres-to-standard registration directory (assumes that non-linear has been run)", :type => :string, :required => true
-    
-    opt :threads, "Number of OpenMP threads to use with AFNI (otherwise defaults to environmental variable OMP_NUM_THREADS if set -> #{ENV['OMP_NUM_THREADS']})", :type => :integer
-    
+        
     opt :log, "Prefix for logging output to json and text files", :type => :string
     opt :ext, "File extensions to use in all inputs", :type => :string, :default => ".nii.gz"
     opt :overwrite, "Overwrite any output", :default => false
+    
+ #   stop_on sub_commands
   end
   opts = Trollop::with_standard_exception_handling p do
     raise Trollop::HelpNeeded if cmdline.empty? # show help screen
     p.parse cmdline
   end
+
+  #cmd = ARGV.shift # get the subcommand
+  #cmd_opts = case cmd
+  #  when "afni" # parse delete options
+  #    Trollop::options do
+  #      opt :threads, "Number of OpenMP threads to use with AFNI (otherwise defaults to environmental variable OMP_NUM_THREADS if set -> #{ENV['OMP_NUM_THREADS']}) (only method afni)", :type => :integer, :default => 1
+  #    end
+  #  when "fsl"
+  #    {}
+  #  else
+  #    Trollop::die "unknown subcommand #{cmd.inspect}"
+  #  end
+  #
+  #puts "Global options: #{global_opts.inspect}"
+  #puts "Subcommand: #{cmd.inspect}"
+  #puts "Subcommand options: #{cmd_opts.inspect}"
+  #puts "Remaining arguments: #{ARGV.inspect}"
+  #
+  ## Combine options
+  #method = cmd
+  #opts = global_opts.merge(cmd_opts)
+
+  cmd = 'fsl'
+  method = cmd
 
   # Gather inputs
   epi_regdir  = opts[:epireg].path.expand_path
@@ -132,9 +166,14 @@ def func_register_to_standard!(cmdline = ARGV, l = nil)
   ###
   # Combine transforms
   ###
-
+  
   l.info "Combining epi-to-anat and anat-to-std affine transforms"
-  l.cmd "3dNwarpCat -prefix exfunc2standard.1D -warp2 exfunc2highres.1D -warp1 highres2standard.1D"
+  if method == "afni"
+    l.cmd "3dNwarpCat -prefix exfunc2standard.1D -warp2 exfunc2highres.1D -warp1 highres2standard.1D"
+  elsif method == "fsl"
+    l.cmd "convert_xfm -omat exfunc2standard.mat -concat highres2standard.mat exfunc2highres.mat"
+    l.cmd "convertwarp --ref=standard --premat=exfunc2highres.mat --warp1=highres2standard_warp --out=exfunc2standard_warp"
+  end
 
 
   ###
@@ -142,7 +181,12 @@ def func_register_to_standard!(cmdline = ARGV, l = nil)
   ###
 
   l.info "Inverting exfunc2standard"
-  l.cmd "3dNwarpCat -prefix standard2exfunc.1D -iwarp -warp1 exfunc2standard.1D"
+  if method == "afni"
+    l.cmd "3dNwarpCat -prefix standard2exfunc.1D -iwarp -warp1 exfunc2standard.1D"
+  elsif method == "fsl"
+    l.cmd "convert_xfm -inverse -omat standard2exfunc.mat exfunc2standard.mat"
+    l.cmd "convertwarp --ref=exfunc --postmat=highres2exfunc.mat --warp1=standard2highres_warp --out=standard2exfunc_warp"
+  end
 
 
   ###
@@ -152,18 +196,26 @@ def func_register_to_standard!(cmdline = ARGV, l = nil)
   l.info "Apply transforms"
 
   l.info "Linear"
-  l.cmd "3dAllineate \
-  -source exfunc#{ext} \
-  -master standard#{ext} \
-  -1Dmatrix_apply exfunc2standard.1D \
-  -prefix exfunc2standard_linear#{ext}"
+  if method == "afni"
+    l.cmd "3dAllineate \
+    -source exfunc#{ext} \
+    -master standard#{ext} \
+    -1Dmatrix_apply exfunc2standard.1D \
+    -prefix exfunc2standard_linear#{ext}"
+  elsif method == "fsl"
+    l.cmd "applywarp --ref=standard --in=exfunc --out=exfunc2standard_linear --premat=exfunc2standard.mat"
+  end
   
   l.info "Non-Linear"
-  l.cmd "3dNwarpApply \
-  -nwarp 'highres2standard_WARP#{ext} exfunc2standard.1D' \
-  -source exfunc#{ext} \
-  -master standard#{ext} \
-  -prefix exfunc2standard#{ext}"
+  if method == "afni"
+    l.cmd "3dNwarpApply \
+    -nwarp 'highres2standard_WARP#{ext} exfunc2standard.1D' \
+    -source exfunc#{ext} \
+    -master standard#{ext} \
+    -prefix exfunc2standard#{ext}"
+  elsif method == "fsl"
+    l.cmd "applywarp --ref=standard --in=exfunc --out=exfunc2standard --warp=exfunc2standard_warp"
+  end
   
   
   ###
@@ -177,8 +229,8 @@ def func_register_to_standard!(cmdline = ARGV, l = nil)
   else
     sl_opts=""
   end
-  l.info "slicer.py#{sl_opts} --auto -r standard#{ext} exfunc2standard_linear#{ext} exfunc2standard_linear.png"
-  l.info "slicer.py#{sl_opts} --auto -r standard#{ext} exfunc2standard#{ext} exfunc2standard.png"
+  l.cmd "slicer.py#{sl_opts} --auto -r standard#{ext} exfunc2standard_linear#{ext} exfunc2standard_linear.png"
+  l.cmd "slicer.py#{sl_opts} --auto -r standard#{ext} exfunc2standard#{ext} exfunc2standard.png"
   
   
   ###
