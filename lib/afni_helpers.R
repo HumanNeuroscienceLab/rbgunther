@@ -51,3 +51,10 @@ brick_stataux <- function(fn) {
   
   list_stataux
 }
+
+xmat_labs <- function(fn) {
+  str <- system(sprintf("grep ColumnLabels %s | sed s/'#  ColumnLabels = '//", fn), intern=T)
+  str <- gsub("\"", "", str)
+  cols <- strsplit(str, ' ; ')[[1]]
+  cols
+}
