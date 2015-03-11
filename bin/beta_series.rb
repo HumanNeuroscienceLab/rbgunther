@@ -78,6 +78,7 @@ def beta_series!(cmdline = ARGV, l = nil)
     opt :tr, "TR of input functionals", :type => :string, :required => true
     opt :polort, "Polort (can be -1 for nothing)", :type => :string, :default => "0"
     opt :oresiduals, "Output residuals of beta-series model fitting", :default => false
+    opt :ofitted, "Output of fitted beta-series model", :default => false
     
     opt :motion, "AFNI motion parameters to include as covariates", :type => :string
     opt :covars, "Additional covariate (e.g., compcor). Two arguments must be given: label filepath", :type => :strings
@@ -107,6 +108,7 @@ def beta_series!(cmdline = ARGV, l = nil)
   tr      = opts[:tr]
   polort  = opts[:polort]
   oresiduals = opts[:oresiduals]
+  ofitted = opts[:ofitted]
   
   motion  = opts[:motion].path.expand_path
   covars  = opts[:covars]
@@ -246,6 +248,7 @@ def beta_series!(cmdline = ARGV, l = nil)
   # Outputs and output options
   cmd.push "-noFDR"
   cmd.push "-Rbuck #{outdir}/stats_bucket.nii.gz"
+  cmd.push "-Rfitts #{outdir}/fitted.nii.gz" if ofitted
   cmd.push "-Rerrts #{outdir}/residuals.nii.gz" if oresiduals
   
   cmd.push "-verb" # TODO: add verbose option
