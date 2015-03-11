@@ -296,11 +296,14 @@ def beta_series!(cmdline = ARGV, l = nil)
     l.cmd "ln -sf #{regdir} #{outdir}/reg"
     l.cmd "mkdir #{outdir}/reg_standard 2> /dev/null"
     
+    # copy over master image
+    l.cmd "fslmaths #{master} #{outdir}/master#{ext}" unless master.nil?
+    
     require 'gen_applywarp.rb'
     warp_cmd = "exfunc-to-standard"
     
     reg_opts = rb_opts.clone
-    reg_opts[:master] = master unless master.nil?
+    reg_opts[:master] = master.to_s unless master.nil?
     
     # transform mask and bg
     gen_applywarp l, nil, :reg => regdir.to_s, :input => "#{outdir}/mask#{ext}", 
