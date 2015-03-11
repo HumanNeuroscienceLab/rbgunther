@@ -226,7 +226,7 @@ def beta_series!(cmdline = ARGV, l = nil)
   # Output and output options
   cmd.push "-noFDR"
   cmd.push "-nobucket"
-  cmd.push "-x1D #{outdir}/xmat.1D"-
+  cmd.push "-x1D #{outdir}/xmat.1D"
   cmd.push "-xjpeg #{outdir}/xmat.jpg"
   cmd.push "-x1D_stop"
   
