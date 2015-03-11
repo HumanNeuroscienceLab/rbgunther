@@ -79,6 +79,7 @@ def beta_series!(cmdline = ARGV, l = nil)
     opt :polort, "Polort (can be -1 for nothing)", :type => :string, :default => "0"
     opt :oresiduals, "Output residuals of beta-series model fitting", :default => false
     opt :ofitted, "Output of fitted beta-series model", :default => false
+    opt :keepstats, "Keep the output stats bucket", :default => false
     
     opt :motion, "AFNI motion parameters to include as covariates", :type => :string
     opt :covars, "Additional covariate (e.g., compcor). Two arguments must be given: label filepath", :type => :strings
@@ -109,6 +110,7 @@ def beta_series!(cmdline = ARGV, l = nil)
   polort  = opts[:polort]
   oresiduals = opts[:oresiduals]
   ofitted = opts[:ofitted]
+  keepstats = opts[:keepstats]
   
   motion  = opts[:motion].path.expand_path
   covars  = opts[:covars]
@@ -152,6 +154,7 @@ def beta_series!(cmdline = ARGV, l = nil)
 
   l.info "Checking outputs" 
   l.fatal("some output files exist, exiting") if !overwrite and all_outputs_exist l, outdir
+  l.cmd "mkdir #{outdir}/evs 2> /dev/null"
   
   l.info "Changing directory to '#{outdir}'"
   outdir.mkdir if not outdir.directory?
@@ -223,7 +226,7 @@ def beta_series!(cmdline = ARGV, l = nil)
   # Output and output options
   cmd.push "-noFDR"
   cmd.push "-nobucket"
-  cmd.push "-x1D #{outdir}/xmat.1D"
+  cmd.push "-x1D #{outdir}/xmat.1D"-
   cmd.push "-xjpeg #{outdir}/xmat.jpg"
   cmd.push "-x1D_stop"
   
@@ -275,7 +278,7 @@ def beta_series!(cmdline = ARGV, l = nil)
   end
   
   # remove full bucket
-  l.cmd "rm #{outdir}/stats_bucket.nii.gz"
+  l.cmd "rm #{outdir}/stats_bucket.nii.gz" unless keepstats
   
   
   #--- OTHER OUTPUTS ---#
