@@ -30,7 +30,7 @@ $: << SCRIPTDIR + "lib" # will be scriptdir/lib
 $: << SCRIPTDIR + "bin" # will be scriptdir/bin
 
 # default template
-default_template = File.join(ENV['FSLDIR'], "data", "standard", "MNI152_T1_1mm_brain.nii.gz")
+default_template = File.join(ENV['FSLDIR'], "data", "standard", "MNI152_T1_2mm_brain.nii.gz")
 
 require 'fileutils'
 require 'for_commands.rb' # provides various function such as 'run'
@@ -163,7 +163,7 @@ anat_skullstrip l, nil, :head => anat.head, :outdir => outdir.to_s, :freedir => 
 
 l.title "Register anatomical to standard space"
 require 'anat_register_to_standard.rb'
-anat_register_to_standard! "--input #{anat.brain} --input-head #{anat.head} --template #{template.to_s} --template-head #{template_head.to_s} -o #{anat.regdir} #{str_rb_opts}", l
+anat_register_to_standard! "--input #{anat.brain} --template #{template.to_s} -o #{anat.regdir} #{str_rb_opts} fsl --input-head #{anat.head}", l
 
 
 ###
