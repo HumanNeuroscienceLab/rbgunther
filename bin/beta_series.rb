@@ -189,7 +189,7 @@ def beta_series!(cmdline = ARGV, l = nil)
     cmd.push "-stim_times_IM #{i+1} '#{timing_fname}' '#{model}'"
     cmd.push "-stim_label #{i+1} #{label}"
     # copy over stimulus parameters
-    l.cmd "cp #{timing_fname} #{outdir}/evs/timing_#{label}.1D"
+    l.cmd "1dcat #{timing_fname} > #{outdir}/evs/timing_#{label}.1D"
   end
   
   # Motion covariates
@@ -202,7 +202,7 @@ def beta_series!(cmdline = ARGV, l = nil)
       cmd.push "-stim_label #{ind} #{motion_labels[i]}"
     end
     # copy over motion parameters
-    l.cmd "cp #{motion} #{outdir}/evs/motion.1D"
+    l.cmd "1dcat #{motion} > #{outdir}/evs/motion.1D"
     nstims += 6
   end
   
@@ -216,7 +216,7 @@ def beta_series!(cmdline = ARGV, l = nil)
       cmd.push "-stim_label #{ind} #{covar_label}_#{num}"
     end
     # copy over covariates
-    l.cmd "cp #{covar_fname} #{outdir}/evs/covars.1D"
+    l.cmd "1dcat #{covar_fname} #{outdir}/evs/covars.1D"
     nstims += ncovars
   end
   
