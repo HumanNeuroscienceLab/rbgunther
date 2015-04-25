@@ -216,7 +216,7 @@ def beta_series!(cmdline = ARGV, l = nil)
       cmd.push "-stim_label #{ind} #{covar_label}_#{num}"
     end
     # copy over covariates
-    l.cmd "1dcat #{covar_fname} #{outdir}/evs/covars.1D"
+    l.cmd "1dcat #{covar_fname} > #{outdir}/evs/covars.1D"
     nstims += ncovars
   end
   
