@@ -154,12 +154,12 @@ def beta_series!(cmdline = ARGV, l = nil)
 
   l.info "Checking outputs" 
   l.fatal("some output files exist, exiting") if !overwrite and all_outputs_exist l, outdir
-  l.cmd "mkdir #{outdir}/evs 2> /dev/null"
   
   l.info "Changing directory to '#{outdir}'"
   outdir.mkdir if not outdir.directory?
   outdir = outdir.realpath
   Dir.chdir outdir
+  l.cmd "mkdir #{outdir}/evs 2> /dev/null"
   
   l.info "Logging"
   log_prefix  = "#{outdir}/log"
