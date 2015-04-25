@@ -72,6 +72,7 @@ def task_analysis!(cmdline = ARGV, l = nil)
     opt :output, "Output directory", :type => :string, :required => true, :short => :o
     
     opt :stim, "Stimulus information: label file-path model", :type => :strings, :required => true, :multi => true
+    opt :stim_am2, "Stimulus (amplitude-duration modulated) information: label file-path model", :type => :strings, :required => true, :multi => true
     opt :glt, "Contrast information (this is on top of any main effects of the stimulus information): label contrast", :type => :strings, :required => true, :multi => true
     
     opt :tr, "TR of input functionals", :type => :string, :required => true
@@ -101,6 +102,7 @@ def task_analysis!(cmdline = ARGV, l = nil)
   outdir  = opts[:output].path.expand_path
   
   stims   = opts[:stim]
+  stims_am2 = opts[:stim_am2]
   glts    = opts[:glt]
   
   tr      = opts[:tr]
@@ -184,7 +186,19 @@ def task_analysis!(cmdline = ARGV, l = nil)
     # copy over stimulus parameters
     l.cmd "cp #{timing_fname} #{outdir}/evs/timing_#{label}.1D"
   end
-    
+  
+  # Stimulus AM2 options
+  if stims_am2.count > 0
+    stims_am2.each_with_index do |stim,i|
+      nstims += 1
+      label = stim[0]; timing_fname = stim[1]; model = stim[2]
+      cmd.push "-stim_times_AM2 #{nstims} '#{timing_fname}' '#{model}'"
+      cmd.push "-stim_label #{nstims} #{label}"
+      # copy over stimulus parameters
+      l.cmd "cp #{timing_fname} #{outdir}/evs/timing_#{label}.1D"
+    end
+  end
+  
   # Motion covariates
   unless motion.nil?
     motion_labels = ['roll', 'pitch', 'yaw', 'dS', 'dL', 'dP']
