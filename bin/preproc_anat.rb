@@ -163,7 +163,7 @@ anat_skullstrip l, nil, :head => anat.head, :outdir => outdir.to_s, :freedir => 
 
 l.title "Register anatomical to standard space"
 require 'anat_register_to_standard.rb'
-anat_register_to_standard! "--input #{anat.brain} --template #{template.to_s} -o #{anat.regdir} #{str_rb_opts} fsl --input-head #{anat.head}", l
+l.cmd "anat_register_to_standard.rb --input #{anat.brain} --template #{template.to_s} -o #{anat.regdir} #{str_rb_opts} fsl --input-head #{anat.head}"
 
 
 ###
