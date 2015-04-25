@@ -203,7 +203,7 @@ def task_analysis!(cmdline = ARGV, l = nil)
   unless motion.nil?
     motion_labels = ['roll', 'pitch', 'yaw', 'dS', 'dL', 'dP']
     (1..6).each_with_index do |num,i|
-      ind = stims.count + num
+      ind = nstims + num
       cmd.push "-stim_file #{ind} #{motion}'[#{i}]'"
       cmd.push "-stim_base #{ind}"
       cmd.push "-stim_label #{ind} #{motion_labels[i]}"
