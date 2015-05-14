@@ -21,6 +21,7 @@ option_list <- list(
   make_option(c("-w", "--weighted"), help="Take weighted average based on weights in ROI.", action="store_true", default=FALSE), 
   make_option(c("-m", "--multiple"), help="Look for multiple ROIs each with a unique value", action="store_true", default=FALSE), 
   make_option(c("-a", "--all"), help="Spit out all the voxels in the ROI", action="store_true", default=FALSE), 
+  make_option(c("-z", "--multiall"), help="Spit out all the voxels in the ROI but do this for each unique ROI value", action="store_true", default=FALSE), 
   make_option(c("-d", "--digits"), help="Number of decimal places to keep (default is auto)", type="integer"), 
   make_option(c("-f", "--force"), action="store_true", default=FALSE, help="Will overwrite any existing output (default is to crash if output exists)."),
   make_option(c("-v", "--verbose"), action="store_true",help="Print extra output [default]"),
@@ -128,6 +129,28 @@ if (opts$multiple) {
 } else if (opts$all) {
   vcat("No averaging - get all time-series in ROI with %i voxels", sum(mask))
   ts <- dat
+} else if (opts$multiall) {
+    vcat("No averaging - get all time-series in ROI with %i voxels per unique ROI value", sum(mask))
+    
+    urois <- sort(unique(rois))
+    nrois <- length(urois)
+    vcat("Found %s ROI(s)", nrois)
+    
+    # remove extension
+    prefix <- sub("[.].*$", "", opts$output)
+    
+    l_ply(1:nrois, function(ri) {
+      uroi <- urois[ri]
+      ts <- dat[,rois==uroi]
+      ts <- as.matrix(ts)
+      if (!is.null(opts$digits)) ts <- round(ts, opts$digits)
+      ofile <- sprintf("%s_%03i.1D", prefix, ri)
+      vcat("Saving to %s", ofile)
+      write.table(ts, file=ofile, row.names=F, col.names=F)
+    })
+    
+    # with this option we should end early
+    q(save="no")
 } else {
   vcat("Vanilla average across %i voxels", sum(mask))
   
