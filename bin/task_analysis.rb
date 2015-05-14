@@ -72,7 +72,7 @@ def task_analysis!(cmdline = ARGV, l = nil)
     opt :output, "Output directory", :type => :string, :required => true, :short => :o
     
     opt :stim, "Stimulus information: label file-path model", :type => :strings, :required => true, :multi => true
-    opt :stim_am2, "Stimulus (amplitude-duration modulated) information: label file-path model", :type => :strings, :required => true, :multi => true
+    opt :stim_am2, "Stimulus (amplitude-duration modulated) information: label file-path model", :type => :strings, :multi => true
     opt :glt, "Contrast information (this is on top of any main effects of the stimulus information): label contrast", :type => :strings, :required => true, :multi => true
     
     opt :tr, "TR of input functionals", :type => :string, :required => true
