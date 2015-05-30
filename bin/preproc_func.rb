@@ -51,6 +51,8 @@ p = Trollop::Parser.new do
   opt :save_unsmooth, "If fwhm given, then will also save unsmoothed output", :default => false
   opt :hp, "High-pass filter in seconds (-1 = skip)", :type => :float, :required => true
   
+  opt :nobbr, "Skips doing BBR", :default => false
+  
   opt :do, "Steps of preprocessing to complete. Options are: all (default), filter (motion correction, smoothing, filtering), register, compcor, concat, and unsmooth", :default => ["all"], :type => :strings
   
   opt :qadir, "Output directory with fmriqa results", :type => :string
@@ -74,8 +76,10 @@ name      = opts[:name]
 tr        = opts[:tr]
 keep      = opts[:keep]
 
-fwhm        = opts[:fwhm]
-hp          = opts[:hp]
+fwhm      = opts[:fwhm]
+hp        = opts[:hp]
+
+nobbr     = opts[:nobbr]  
 
 qadir     = opts[:qadir]
 qadir     = qadir.path.expand_path unless qadir.nil?
@@ -243,7 +247,7 @@ if steps['register']
 
   require 'func_register_to_highres.rb'
   l.cmd "fslmaths #{anat.segdir}/highres_pve_2.nii.gz -thr 0.5 -bin #{anat.wmseg}"
-  func_register_to_highres l, nil, :epi => func.brain.to_s, :anat => anat.brain.to_s, :output => func.regdir.to_s,  :anathead => anat.head.to_s, :wmseg => anat.wmseg.to_s, **rb_opts
+  func_register_to_highres l, nil, :epi => func.brain.to_s, :anat => anat.brain.to_s, :output => func.regdir.to_s,  :anathead => anat.head.to_s, :wmseg => anat.wmseg.to_s, :nobbr => nobbr, **rb_opts
   
   require 'func_register_to_standard.rb'
   func_register_to_standard l, nil, :epireg => func.regdir.to_s, :anatreg => anat.regdir.to_s, **rb_opts

@@ -71,6 +71,7 @@ def func_register_to_highres!(cmdline = ARGV, l = nil)
     
     opt :anathead, "Input anatomical brain (must be skull stripped) (only method fsl)", :type => :string, :required => true
     opt :wmseg, "White matter segmentation (only method fsl)", :type => :string
+    opt :nobbr, "Doesn't run the bbr algorithm", :default => false
     
     opt :log, "Prefix for logging output to json and text files", :type => :string
     opt :ext, "File extensions to use in all inputs", :type => :string, :default => ".nii.gz"
@@ -121,6 +122,7 @@ def func_register_to_highres!(cmdline = ARGV, l = nil)
   anathead  = anathead.path.expand_path if not anathead.nil?
   wmseg     = opts[:wmseg]
   wmseg     = wmseg.path.expand_path if not wmseg.nil?
+  nobbr     = opts[:nobbr]
   
   dof       = opts[:dof]
   cost      = opts[:cost]
@@ -255,11 +257,17 @@ def func_register_to_highres!(cmdline = ARGV, l = nil)
       end  
     end # end of temporary directory      
   elsif method == "fsl"
-    l.info "Transforming exfunc to highres with BBR"
-    cmd = "epi_reg --epi=#{epi} --t1=#{anathead} --t1brain=#{anat} --out=#{outdir}/exfunc2highres"
-    cmd += " --wmseg=#{wmseg}"
-    l.cmd cmd
-    
+    if nobbr
+      # If no bbreg then do a simple flirt command
+      l.info "Transforming exfunc to highres without BBR"
+      cmd = "flirt -in #{epi} -ref #{anat} -dof 6 -omat #{outdir}/exfunc2highres.mat -out #{outdir}/exfunc2highres.nii.gz"
+      l.cmd cmd
+    else
+      l.info "Transforming exfunc to highres with BBR"
+      cmd = "epi_reg --epi=#{epi} --t1=#{anathead} --t1brain=#{anat} --out=#{outdir}/exfunc2highres"
+      cmd += " --wmseg=#{wmseg}"
+      l.cmd cmd
+    end
     l.info "Inverting affine matrix (highres -> func)"
     l.cmd "convert_xfm -inverse -omat #{outdir}/highres2exfunc.mat #{outdir}/exfunc2highres.mat"
   end
