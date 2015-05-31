@@ -71,6 +71,9 @@ def task_analysis!(cmdline = ARGV, l = nil)
     opt :bg, "Background image", :type => :string, :required => true
     opt :output, "Output directory", :type => :string, :required => true, :short => :o
     
+    opt :local, "Force local timing, see -local_times in 3dDeconvolve", :default => false
+    opt :global, "Force global timing, see -global_times in 3dDeconvolve", :default => false
+    
     opt :stim, "Stimulus information: label file-path model", :type => :strings, :required => true, :multi => true
     opt :stim_am2, "Stimulus (amplitude-duration modulated) information: label file-path model", :type => :strings, :multi => true
     opt :glt, "Contrast information (this is on top of any main effects of the stimulus information): label contrast", :type => :strings, :required => true, :multi => true
@@ -100,6 +103,9 @@ def task_analysis!(cmdline = ARGV, l = nil)
   mask    = opts[:mask].path.expand_path
   bg      = opts[:bg].path.expand_path
   outdir  = opts[:output].path.expand_path
+  
+  local_t = opts[:local]
+  global_t= opts[:global]
   
   stims   = opts[:stim]
   stims_am2 = opts[:stim_am2]
@@ -175,6 +181,10 @@ def task_analysis!(cmdline = ARGV, l = nil)
   cmd.push "-input #{str_inputs}"
   cmd.push "-force_TR #{tr}"
   cmd.push "-polort #{polort}"
+  
+  # Local vs global timing
+  cmd.push "-global_times" if global_t
+  cmd.push "-local_times" if local_t
   
   # Stimulus options
   refc = cmd.count
