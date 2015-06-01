@@ -87,7 +87,7 @@ def task_analysis!(cmdline = ARGV, l = nil)
     
     opt :regdir, "A registration directory in the style of fsl. If given, then will transform outputs into standard space", :type => :string
     opt :nostandard, "Will not register to standard space if regdir is specified", :default => false
-    opt :tohighres => "Will register to highres space if regdir is also specified", :default => false
+    opt :tohighres, "Will register to highres space if regdir is also specified", :default => false
     
     opt :threads, "Number of OpenMP threads to use with AFNI (otherwise defaults to environmental variable OMP_NUM_THREADS if set -> #{ENV['OMP_NUM_THREADS']})", :type => :integer
     opt :ext, "File extensions to use in all outputs", :type => :string, :default => ".nii.gz"
