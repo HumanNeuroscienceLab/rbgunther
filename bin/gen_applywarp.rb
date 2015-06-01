@@ -133,6 +133,8 @@ def gen_applywarp!(cmdline = ARGV, l = nil)
   master  = opts[:master]
   master  = master.path.expand_path if not master.nil?  
   dxyz    = opts[:dxyz]
+  
+  mask    = opts[:mask]
 
   if opts[:short] and opts[:float]
     abort "Cannot specify both --short and --float"
