@@ -451,26 +451,26 @@ def task_analysis!(cmdline = ARGV, l = nil)
     
     # transform mask and bg
     gen_applywarp l, nil, :reg => regdir.to_s, :input => "#{outdir}/mask#{ext}", 
-      :warp => warp_cmd, :output => "#{outdir}/reg_standard/mask#{ext}", 
+      :warp => warp_cmd, :output => "#{outdir}/reg_highres/mask#{ext}", 
       :interp => "nn", **rb_opts
     gen_applywarp l, nil, :reg => regdir.to_s, :input => "#{outdir}/bgimage#{ext}", 
-      :warp => warp_cmd, :output => "#{outdir}/reg_standard/bgimage#{ext}", 
+      :warp => warp_cmd, :output => "#{outdir}/reg_highres/bgimage#{ext}", 
       :interp => "spline", **rb_opts
     
     # also transform stat images
-    l.cmd "mkdir #{outdir}/reg_standard/stats 2> /dev/null"
+    l.cmd "mkdir #{outdir}/reg_highres/stats 2> /dev/null"
     labels.each_with_index do |label,i|
       l.info "transforming #{label}"
       
       gen_applywarp l, nil, :reg => regdir.to_s, :input => "#{statdir}/coef_#{label}#{ext}", 
-        :warp => warp_cmd, :output => "#{outdir}/reg_standard/stats/coef_#{label}#{ext}", 
-        :interp => "spline", **rb_opts
+        :warp => warp_cmd, :output => "#{outdir}/reg_highres/stats/coef_#{label}#{ext}", 
+        :mask => "#{outdir}/reg_highres/mask#{ext}", :interp => "spline", **rb_opts
       gen_applywarp l, nil, :reg => regdir.to_s, :input => "#{statdir}/tstat_#{label}#{ext}", 
-        :warp => warp_cmd, :output => "#{outdir}/reg_standard/stats/tstat_#{label}#{ext}", 
-        :interp => "spline", **rb_opts
+        :warp => warp_cmd, :output => "#{outdir}/reg_highres/stats/tstat_#{label}#{ext}", 
+        :mask => "#{outdir}/reg_highres/mask#{ext}", :interp => "spline", **rb_opts
       gen_applywarp l, nil, :reg => regdir.to_s, :input => "#{statdir}/zstat_#{label}#{ext}", 
-        :warp => warp_cmd, :output => "#{outdir}/reg_standard/stats/zstat_#{label}#{ext}", 
-        :interp => "spline", **rb_opts      
+        :warp => warp_cmd, :output => "#{outdir}/reg_highres/stats/zstat_#{label}#{ext}", 
+        :mask => "#{outdir}/reg_highres/mask#{ext}", :interp => "spline", **rb_opts      
     end
   end
   
@@ -502,13 +502,13 @@ def task_analysis!(cmdline = ARGV, l = nil)
       
       gen_applywarp l, nil, :reg => regdir.to_s, :input => "#{statdir}/coef_#{label}#{ext}", 
         :warp => warp_cmd, :output => "#{outdir}/reg_standard/stats/coef_#{label}#{ext}", 
-        :interp => "spline", **rb_opts
+        :mask => "#{outdir}/reg_standard/mask#{ext}", :interp => "spline", **rb_opts
       gen_applywarp l, nil, :reg => regdir.to_s, :input => "#{statdir}/tstat_#{label}#{ext}", 
         :warp => warp_cmd, :output => "#{outdir}/reg_standard/stats/tstat_#{label}#{ext}", 
-        :interp => "spline", **rb_opts
+        :mask => "#{outdir}/reg_standard/mask#{ext}", :interp => "spline", **rb_opts
       gen_applywarp l, nil, :reg => regdir.to_s, :input => "#{statdir}/zstat_#{label}#{ext}", 
         :warp => warp_cmd, :output => "#{outdir}/reg_standard/stats/zstat_#{label}#{ext}", 
-        :interp => "spline", **rb_opts      
+        :mask => "#{outdir}/reg_standard/mask#{ext}", :interp => "spline", **rb_opts      
     end
   end
   

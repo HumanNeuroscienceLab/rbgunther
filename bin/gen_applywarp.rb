@@ -75,6 +75,7 @@ def gen_applywarp!(cmdline = ARGV, l = nil)
     # fsl: nn, trilinear, sinc, and spline
     opt :interp, "Final interpolation to use (for afni this means the --ainterp or --final) and can be for afni: NN, linear, cubic, quintic, or wsinc5, fsl: nn, linear, sinc, and spline (spline only for non-linear)", :type => :string
     opt :master, "An image that defines the output grid (default: target image for the registration)", :type => :string
+    opt :mask, "Mask to be applied in reference space", :type => :string
     
     opt :short, "Will force output to be shorts (default: auto)", :default => false
     opt :float, "Will force output to be floats (default: auto)", :default => false
@@ -220,6 +221,11 @@ def gen_applywarp!(cmdline = ARGV, l = nil)
       cmd += " -prefix #{output}"
 
       l.cmd cmd
+      
+      if not mask.nil?
+        cmd = "3dcalc -overwrite -a #{output} -b #{mask} -expr 'a*step(b)' -prefix #{output}"
+        l.cmd cmd
+      end
     elsif method == "fsl"
       cmd = ["applywarp"]
       cmd.push "-i #{input}"
@@ -229,6 +235,8 @@ def gen_applywarp!(cmdline = ARGV, l = nil)
       else
         cmd.push "-r #{master}"
       end
+      
+      cmd.push "-m #{mask}" if not mask.nil?
       
       cmd.push "-w #{regdir}/#{source}2#{target}_warp#{ext}"
       # TODO: switch the mcfile to be your premat!
@@ -280,6 +288,11 @@ def gen_applywarp!(cmdline = ARGV, l = nil)
         cmd "3dcalc -overwrite -a #{output} -expr 'a' -prefix #{output} -short"
         l.cmd(cmd)
       end
+      
+      if not mask.nil?
+        cmd = "3dcalc -overwrite -a #{output} -b #{mask} -expr 'a*step(b)' -prefix #{output}"
+        l.cmd cmd
+      end
     elsif method == "fsl"
       # actually can use applywarp for linear
       # $FSLDIR/bin/applywarp -i ${vepi} -r ${vrefhead} -o ${vout} --premat=${vout}.mat --interp=spline
@@ -292,6 +305,8 @@ def gen_applywarp!(cmdline = ARGV, l = nil)
       else
         cmd.push "-r #{master}"
       end
+      
+      cmd.push "-m #{mask}" if not mask.nil?
       
       cmd.push " --premat=#{regdir}/#{source}2#{target}.mat"
       
