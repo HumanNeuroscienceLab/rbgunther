@@ -86,6 +86,8 @@ def task_analysis!(cmdline = ARGV, l = nil)
     opt :covars, "Additional covariate (e.g., compcor). Two arguments must be given: label filepath", :type => :strings
     
     opt :regdir, "A registration directory in the style of fsl. If given, then will transform outputs into standard space", :type => :string
+    opt :nostandard, "Will not register to standard space if regdir is specified", :default => false
+    opt :tohighres => "Will register to highres space if regdir is also specified", :default => false
     
     opt :threads, "Number of OpenMP threads to use with AFNI (otherwise defaults to environmental variable OMP_NUM_THREADS if set -> #{ENV['OMP_NUM_THREADS']})", :type => :integer
     opt :ext, "File extensions to use in all outputs", :type => :string, :default => ".nii.gz"
@@ -124,6 +126,8 @@ def task_analysis!(cmdline = ARGV, l = nil)
   
   regdir      = opts[:regdir]
   regdir      = regdir.path.expand_path unless regdir.nil?
+  tostandard  = !opts[:notstandard]
+  tohighres   = opts[:tohighres]
   
   threads     = opts[:threads]
   ext         = opts[:ext]
@@ -434,10 +438,47 @@ def task_analysis!(cmdline = ARGV, l = nil)
   end
   
   
+  #--- TO HIGHRES ---#
+  
+  if not regdir.nil? and tohighres
+    l.title "Transform output to highres space"
+    
+    l.cmd "ln -sf #{regdir} #{outdir}/reg"
+    l.cmd "mkdir #{outdir}/reg_highres 2> /dev/null"
+    
+    require 'gen_applywarp.rb'
+    warp_cmd = "exfunc-to-highres"
+    
+    # transform mask and bg
+    gen_applywarp l, nil, :reg => regdir.to_s, :input => "#{outdir}/mask#{ext}", 
+      :warp => warp_cmd, :output => "#{outdir}/reg_standard/mask#{ext}", 
+      :interp => "nn", **rb_opts
+    gen_applywarp l, nil, :reg => regdir.to_s, :input => "#{outdir}/bgimage#{ext}", 
+      :warp => warp_cmd, :output => "#{outdir}/reg_standard/bgimage#{ext}", 
+      :interp => "spline", **rb_opts
+    
+    # also transform stat images
+    l.cmd "mkdir #{outdir}/reg_standard/stats 2> /dev/null"
+    labels.each_with_index do |label,i|
+      l.info "transforming #{label}"
+      
+      gen_applywarp l, nil, :reg => regdir.to_s, :input => "#{statdir}/coef_#{label}#{ext}", 
+        :warp => warp_cmd, :output => "#{outdir}/reg_standard/stats/coef_#{label}#{ext}", 
+        :interp => "spline", **rb_opts
+      gen_applywarp l, nil, :reg => regdir.to_s, :input => "#{statdir}/tstat_#{label}#{ext}", 
+        :warp => warp_cmd, :output => "#{outdir}/reg_standard/stats/tstat_#{label}#{ext}", 
+        :interp => "spline", **rb_opts
+      gen_applywarp l, nil, :reg => regdir.to_s, :input => "#{statdir}/zstat_#{label}#{ext}", 
+        :warp => warp_cmd, :output => "#{outdir}/reg_standard/stats/zstat_#{label}#{ext}", 
+        :interp => "spline", **rb_opts      
+    end
+  end
+  
+  
   #--- TO STANDARD ---#
   
   # if given a regdir, this will transform the outputs to standard space
-  if not regdir.nil?
+  if not regdir.nil? and tostandard
     l.title "Transform output to standard space"
     
     l.cmd "ln -sf #{regdir} #{outdir}/reg"
