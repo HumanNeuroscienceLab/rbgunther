@@ -86,8 +86,11 @@ def task_analysis!(cmdline = ARGV, l = nil)
     opt :covars, "Additional covariate (e.g., compcor). Two arguments must be given: label filepath", :type => :strings
     
     opt :regdir, "A registration directory in the style of fsl. If given, then will transform outputs into standard space", :type => :string
-    opt :nostandard, "Will not register to standard space if regdir is specified", :default => false
+    opt :freedir, "Subject directory for freesurfer outputs. Should be $SUBJECTS_DIR/subject", :type => :string
+    
+    opt :tostandard, "Will register to standard space if regdir is specified", :default => false
     opt :tohighres, "Will register to highres space if regdir is also specified", :default => false
+    opt :tosurf, "Will register to native surface space if regdir and freedir is also specified", :default => false
     
     opt :threads, "Number of OpenMP threads to use with AFNI (otherwise defaults to environmental variable OMP_NUM_THREADS if set -> #{ENV['OMP_NUM_THREADS']})", :type => :integer
     opt :ext, "File extensions to use in all outputs", :type => :string, :default => ".nii.gz"
@@ -126,8 +129,12 @@ def task_analysis!(cmdline = ARGV, l = nil)
   
   regdir      = opts[:regdir]
   regdir      = regdir.path.expand_path unless regdir.nil?
-  tostandard  = !opts[:notstandard]
+  freedir     = opts[:freedir]
+  freesubj    = freedir.path.basename.to_s unless freedir.nil?
+  freedir     = freedir.path.expand_path.dirname.to_s unless freedir.nil?
+  tostandard  = opts[:tostandard]
   tohighres   = opts[:tohighres]
+  tosurf      = opts[:tosurf]
   
   threads     = opts[:threads]
   ext         = opts[:ext]
@@ -435,6 +442,35 @@ def task_analysis!(cmdline = ARGV, l = nil)
     vmax=`fslstats #{statdir}/thresh_zstat_#{label}.nii.gz -R | awk '{print $2}'`.strip
     l.cmd "overlay 1 0 #{bg} -a #{statdir}/thresh_zstat_#{label}.nii.gz #{vthr} #{vmax} #{outdir}/rendered_stats/thresh_zstat_#{label}.nii.gz"
     l.cmd "slicer #{outdir}/rendered_stats/thresh_zstat_#{label}.nii.gz -S 2 750 #{outdir}/rendered_stats/thresh_zstat_#{label}.png"
+  end
+  
+  
+  #--- TO SURFACE ---#
+  
+  if not regdir.nil? and not freedir.nil? and tosurf
+    l.title "Transform output to surface space"
+    
+    l.cmd "ln -sf #{regdir} #{outdir}/reg"
+    l.cmd "mkdir #{outdir}/reg_surf 2> /dev/null"
+    l.cmd "mkdir #{outdir}/reg_surf/stats 2> /dev/null"
+        
+    ["lh", "rh"].each do |hemi|
+      l.info "=== hemi: #{hemi} ==="
+      
+      # transform mask
+      l.cmd "mri_vol2surf --src #{outdir}/mask#{ext} --srcreg #{regdir}/freesurfer --trgsubject #{freesubj} --hemi #{hemi} --surf white --out #{outdir}/reg_surf/mask.nii.gz"
+      
+      # transform each of the stat images
+      labels.each_with_index do |label,i|
+        l.info "transforming #{label}"
+        
+        l.cmd "mri_vol2surf --src #{statdir}/coef_#{label}#{ext} --srcreg #{regdir}/freesurfer --trgsubject #{freesubj} --hemi #{hemi} --surf white --out #{outdir}/reg_surf/stats/coef_#{label}#{ext}"
+        l.cmd "mri_vol2surf --src #{statdir}/tstat_#{label}#{ext} --srcreg #{regdir}/freesurfer --trgsubject #{freesubj} --hemi #{hemi} --surf white --out #{outdir}/reg_surf/stats/tstat_#{label}#{ext}"
+        l.cmd "mri_vol2surf --src #{statdir}/zstat_#{label}#{ext} --srcreg #{regdir}/freesurfer --trgsubject #{freesubj} --hemi #{hemi} --surf white --out #{outdir}/reg_surf/stats/zstat_#{label}#{ext}"        
+      end
+      
+      l.info "=== ==="
+    end        
   end
   
   
