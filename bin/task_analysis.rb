@@ -467,9 +467,9 @@ def task_analysis!(cmdline = ARGV, l = nil)
       labels.each_with_index do |label,i|
         l.info "transforming #{label}"
         
-        l.cmd "mri_vol2surf --src #{statdir}/coef_#{label}#{ext} --srcreg #{regfile} --trgsubject #{freesubj} --hemi #{hemi} --surf white --out #{outdir}/reg_surf/stats/coef_#{label}#{ext} --sd #{freedir}"
-        l.cmd "mri_vol2surf --src #{statdir}/tstat_#{label}#{ext} --srcreg #{regfile} --trgsubject #{freesubj} --hemi #{hemi} --surf white --out #{outdir}/reg_surf/stats/tstat_#{label}#{ext} --sd #{freedir}"
-        l.cmd "mri_vol2surf --src #{statdir}/zstat_#{label}#{ext} --srcreg #{regfile} --trgsubject #{freesubj} --hemi #{hemi} --surf white --out #{outdir}/reg_surf/stats/zstat_#{label}#{ext} --sd #{freedir}"
+        l.cmd "mri_vol2surf --src #{statdir}/coef_#{label}#{ext} --srcreg #{regfile} --trgsubject #{freesubj} --hemi #{hemi} --surf white --out #{outdir}/reg_surf/stats/coef_#{label}.mgh --sd #{freedir}"
+        l.cmd "mri_vol2surf --src #{statdir}/tstat_#{label}#{ext} --srcreg #{regfile} --trgsubject #{freesubj} --hemi #{hemi} --surf white --out #{outdir}/reg_surf/stats/tstat_#{label}.mgh --sd #{freedir}"
+        l.cmd "mri_vol2surf --src #{statdir}/zstat_#{label}#{ext} --srcreg #{regfile} --trgsubject #{freesubj} --hemi #{hemi} --surf white --out #{outdir}/reg_surf/stats/zstat_#{label}.mgh --sd #{freedir}"
       end
       
       l.info "=== ==="
