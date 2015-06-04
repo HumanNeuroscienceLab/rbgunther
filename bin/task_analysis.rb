@@ -451,24 +451,25 @@ def task_analysis!(cmdline = ARGV, l = nil)
     l.title "Transform output to surface space"
     
     ENV['SUBJECTS_DIR'] = freedir.to_s
+    regfile = "#{regdir}/freesurfer/anat2exf.register.dat"
     
     l.cmd "ln -sf #{regdir} #{outdir}/reg"
     l.cmd "mkdir #{outdir}/reg_surf 2> /dev/null"
     l.cmd "mkdir #{outdir}/reg_surf/stats 2> /dev/null"
-        
+    
     ["lh", "rh"].each do |hemi|
       l.info "=== hemi: #{hemi} ==="
       
       # transform mask
-      l.cmd "mri_vol2surf --src #{outdir}/mask#{ext} --srcreg #{regdir}/freesurfer --trgsubject #{freesubj} --hemi #{hemi} --surf white --out #{outdir}/reg_surf/mask.nii.gz --sd #{freedir}"
+      l.cmd "mri_vol2surf --src #{outdir}/mask#{ext} --srcreg #{regfile} --trgsubject #{freesubj} --hemi #{hemi} --surf white --out #{outdir}/reg_surf/mask.nii.gz --sd #{freedir}"
       
       # transform each of the stat images
       labels.each_with_index do |label,i|
         l.info "transforming #{label}"
         
-        l.cmd "mri_vol2surf --src #{statdir}/coef_#{label}#{ext} --srcreg #{regdir}/freesurfer --trgsubject #{freesubj} --hemi #{hemi} --surf white --out #{outdir}/reg_surf/stats/coef_#{label}#{ext} --sd #{freedir}"
-        l.cmd "mri_vol2surf --src #{statdir}/tstat_#{label}#{ext} --srcreg #{regdir}/freesurfer --trgsubject #{freesubj} --hemi #{hemi} --surf white --out #{outdir}/reg_surf/stats/tstat_#{label}#{ext} --sd #{freedir}"
-        l.cmd "mri_vol2surf --src #{statdir}/zstat_#{label}#{ext} --srcreg #{regdir}/freesurfer --trgsubject #{freesubj} --hemi #{hemi} --surf white --out #{outdir}/reg_surf/stats/zstat_#{label}#{ext} --sd #{freedir}"
+        l.cmd "mri_vol2surf --src #{statdir}/coef_#{label}#{ext} --srcreg #{regfile} --trgsubject #{freesubj} --hemi #{hemi} --surf white --out #{outdir}/reg_surf/stats/coef_#{label}#{ext} --sd #{freedir}"
+        l.cmd "mri_vol2surf --src #{statdir}/tstat_#{label}#{ext} --srcreg #{regfile} --trgsubject #{freesubj} --hemi #{hemi} --surf white --out #{outdir}/reg_surf/stats/tstat_#{label}#{ext} --sd #{freedir}"
+        l.cmd "mri_vol2surf --src #{statdir}/zstat_#{label}#{ext} --srcreg #{regfile} --trgsubject #{freesubj} --hemi #{hemi} --surf white --out #{outdir}/reg_surf/stats/zstat_#{label}#{ext} --sd #{freedir}"
       end
       
       l.info "=== ==="
