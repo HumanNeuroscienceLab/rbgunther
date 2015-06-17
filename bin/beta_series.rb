@@ -73,6 +73,9 @@ def beta_series!(cmdline = ARGV, l = nil)
     opt :bg, "Background image", :type => :string, :required => true
     opt :output, "Output directory", :type => :string, :required => true
     
+    opt :local, "Force local timing, see -local_times in 3dDeconvolve", :default => false
+    opt :global, "Force global timing, see -global_times in 3dDeconvolve", :default => false
+    
     opt :stim, "Stimulus information: label file-path model", :type => :strings, :required => true, :multi => true
     
     opt :tr, "TR of input functionals", :type => :string, :required => true
@@ -103,6 +106,9 @@ def beta_series!(cmdline = ARGV, l = nil)
   mask    = opts[:mask].path.expand_path
   bg      = opts[:bg].path.expand_path
   outdir  = opts[:output].path.expand_path
+  
+  local_t = opts[:local]
+  global_t= opts[:global]
   
   stims   = opts[:stim]
   
@@ -180,6 +186,10 @@ def beta_series!(cmdline = ARGV, l = nil)
   cmd.push "-input #{str_inputs}"
   cmd.push "-force_TR #{tr}"
   cmd.push "-polort #{polort}"
+  
+  # Local vs global timing
+  cmd.push "-global_times" if global_t
+  cmd.push "-local_times" if local_t
   
   # Stimulus options
   refc = cmd.count
