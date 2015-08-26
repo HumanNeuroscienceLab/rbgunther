@@ -92,6 +92,8 @@ def task_analysis!(cmdline = ARGV, l = nil)
     opt :tohighres, "Will register to highres space if regdir is also specified", :default => false
     opt :tosurf, "Will register to native surface space if regdir and freedir is also specified", :default => false
     
+    opt :stopearly, "This will quit the program after saving the t-stat maps in native space. The steps of tsnr, easythresh, or normalization will not be run."
+    
     opt :threads, "Number of OpenMP threads to use with AFNI (otherwise defaults to environmental variable OMP_NUM_THREADS if set -> #{ENV['OMP_NUM_THREADS']})", :type => :integer
     opt :ext, "File extensions to use in all outputs", :type => :string, :default => ".nii.gz"
     opt :overwrite, "Overwrite existing output", :default => false
@@ -139,6 +141,8 @@ def task_analysis!(cmdline = ARGV, l = nil)
   threads     = opts[:threads]
   ext         = opts[:ext]
   overwrite   = opts[:overwrite]
+  
+  stopearly   = opts[:stopearly] 
   
   l           = create_logger()
     
@@ -320,6 +324,9 @@ def task_analysis!(cmdline = ARGV, l = nil)
     l.cmd "3dcalc#{af_opts} -a #{outdir}/stats_bucket#{ext}'[#{label}#0_Tstat]' -expr a -prefix #{statdir}/tstat_#{label}#{ext} -float"
     l.cmd "3dcalc#{af_opts} -a #{outdir}/stats_bucket#{ext}'[#{label}#0_Tstat]' -expr 'fitt_t2z(a,#{df})' -prefix #{statdir}/zstat_#{label}#{ext} -float"
   end
+  
+  # end early?
+  exit if stopearly
   
   
   #--- TSNR ---#
