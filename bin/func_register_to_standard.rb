@@ -169,10 +169,25 @@ def func_register_to_standard!(cmdline = ARGV, l = nil)
   
   l.info "Combining epi-to-anat and anat-to-std affine transforms"
   if method == "afni"
+    
     l.cmd "3dNwarpCat -prefix exfunc2standard.1D -warp2 exfunc2highres.1D -warp1 highres2standard.1D"
+    
   elsif method == "fsl"
+    
     l.cmd "convert_xfm -omat exfunc2standard.mat -concat highres2standard.mat exfunc2highres.mat"
     l.cmd "convertwarp --ref=standard --premat=exfunc2highres.mat --warp1=highres2standard_warp --out=exfunc2standard_warp"
+    
+  elsif method == "ants"
+    
+    l.cmd "c3d_affine_tool -ref highres.nii.gz -src exfunc.nii.gz \
+    exfunc2highres.mat -fsl2ras -oitk fsl2ants_exfunc2highres.txt"
+    
+    l.cmd "antsApplyTransforms -d 3 -o Linear[exfunc2standard.mat] \
+  -t highres2standard.mat -t fsl2ants_exfunc2highres.txt \
+  -r standard.nii.gz"
+    l.cmd "antsApplyTransforms -d 3 -o [exfunc2standard_warp.nii.gz,1] \
+  -t highres2standard_warp.nii.gz -t highres2standard.mat -t fsl2ants_exfunc2highres.txt \
+  -r standard.nii.gz"
   end
 
 
@@ -182,10 +197,23 @@ def func_register_to_standard!(cmdline = ARGV, l = nil)
 
   l.info "Inverting exfunc2standard"
   if method == "afni"
+    
     l.cmd "3dNwarpCat -prefix standard2exfunc.1D -iwarp -warp1 exfunc2standard.1D"
+    
   elsif method == "fsl"
+    
     l.cmd "convert_xfm -inverse -omat standard2exfunc.mat exfunc2standard.mat"
     l.cmd "convertwarp --ref=exfunc --postmat=highres2exfunc.mat --warp1=standard2highres_warp --out=standard2exfunc_warp"
+    
+  elsif method == "ants"
+    
+    l.cmd "antsApplyTransforms -d 3 -o Linear[standard2exfunc.mat,1] \
+      -t exfunc2standard.mat"
+    l.cmd "antsApplyTransforms -d 3 -o [standard2exfunc_warp.nii.gz,1] \
+  -t [fsl2ants_exfunc2highres.txt,1] -t standard2highres.mat \
+  -t standard2highres_warp.nii.gz \
+  -r standard.nii.gz"
+    
   end
 
 
@@ -197,24 +225,42 @@ def func_register_to_standard!(cmdline = ARGV, l = nil)
 
   l.info "Linear"
   if method == "afni"
+    
     l.cmd "3dAllineate \
     -source exfunc#{ext} \
     -master standard#{ext} \
     -1Dmatrix_apply exfunc2standard.1D \
     -prefix exfunc2standard_linear#{ext}"
+    
   elsif method == "fsl"
+    
     l.cmd "applywarp --ref=standard --in=exfunc --out=exfunc2standard_linear --premat=exfunc2standard.mat"
+    
+  elsif method == "ants"
+    
+    l.cmd "antsApplyTransforms -d 3 -o exfunc2standard_linear.nii.gz \
+    -t highres2standard.mat -t fsl2ants_exfunc2highres.txt \
+    -r standard#{ext} -i exfunc#{ext}"
   end
   
   l.info "Non-Linear"
   if method == "afni"
+    
     l.cmd "3dNwarpApply \
     -nwarp 'highres2standard_WARP#{ext} exfunc2standard.1D' \
     -source exfunc#{ext} \
     -master standard#{ext} \
     -prefix exfunc2standard#{ext}"
+    
   elsif method == "fsl"
+    
     l.cmd "applywarp --ref=standard --in=exfunc --out=exfunc2standard --warp=exfunc2standard_warp"
+    
+  elsif method == "ants"
+    
+    l.cmd "antsApplyTransforms -d 3 -o exfunc2standard.nii.gz \
+      -t highres2standard_warp.nii.gz -t highres2standard.mat \
+      -t fsl2ants_exfunc2highres.txt -r standard#{ext} -i exfunc#{ext}"
   end
   
   

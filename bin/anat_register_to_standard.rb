@@ -57,7 +57,7 @@ def anat_register_to_standard!(cmdline = ARGV, l = nil)
     
     banner "\nOptions common to all registration approaches are given first followed by the name of the approach (afni or fsl) to use and then approach specific options. In the usage, anything in [] are required options while anything in () are optional."
     
-    banner "\nUsage: #{File.basename($0)} [-i anat_brain.nii.gz -o output_directory] (--template MNI152_T1_2mm_brain.nii.gz --ext .nii.gz --log log_outprefix --overwrite) [method] (afni: --threads num_of_threads) (fsl: --input-head highres_head.nii.gz --template-head MNI152_T1_2mm.nii.gz)"
+    banner "\nUsage: #{File.basename($0)} [-i anat_brain.nii.gz -o output_directory] (--template MNI152_T1_2mm_brain.nii.gz --ext .nii.gz --log log_outprefix --overwrite) [method] (afni: --threads num_of_threads) (fsl: --input-head highres_head.nii.gz --template-head MNI152_T1_2mm.nii.gz) (ants: --threads num_of_threads)"
     
     banner "\n#{File.basename($0)} ... afni --help"
     banner "\n#{File.basename($0)} ... fsl --help"
@@ -85,6 +85,10 @@ def anat_register_to_standard!(cmdline = ARGV, l = nil)
         opt :input_head, "Input anatomical with head (only method fsl)", :type => :string, :required => true
         opt :template_head, "Template head to be the target of warping (only method fsl)", :type => :string, :default => File.join(ENV['FSLDIR'], "data", "standard", "MNI152_T1_2mm.nii.gz")
         opt :template_mask, "Template head to be the target of warping (only method fsl)", :type => :string, :default => File.join(ENV['FSLDIR'], "data", "standard", "MNI152_T1_2mm_brain_mask_dil.nii.gz")
+      end
+    when "ants"
+      Trollop::options do
+        opt :threads, "Number of threads to use with ANTS (otherwise defaults to 1) (only method ants)", :type => :integer
       end
     else
       Trollop::die "unknown subcommand #{cmd.inspect}"
@@ -118,7 +122,11 @@ def anat_register_to_standard!(cmdline = ARGV, l = nil)
   log_prefix = log_prefix.path.expand_path unless log_prefix.nil?
   
   threads   = opts[:threads]
-  threads   = ENV['OMP_NUM_THREADS'].to_i if threads.nil? and not ENV['OMP_NUM_THREADS'].nil?
+  if method == "afni"
+    threads   = ENV['OMP_NUM_THREADS'].to_i if threads.nil? and not ENV['OMP_NUM_THREADS'].nil?
+  elsif method == "ants"
+    threads   = 1 if threads.nil?
+  end
   
   # Setup logger if needed
   l = create_logger(log_prefix, overwrite) if l.nil?
@@ -268,7 +276,37 @@ def anat_register_to_standard!(cmdline = ARGV, l = nil)
     
     l.info "Invert non-linear warp"
     l.cmd "invwarp -w highres2standard_warp -r highres_head -o standard2highres_warp"
+  
+  elsif method == "ants"
+    ENV['ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS'] = threads
+  
+    l.info "Register"
+    l.cmd "antsRegistrationSyNQuick.sh -d 3 -f standard#{ext} -m highres#{ext} \
+      -o ants_output -t s"
+        
+    l.info "Rename files"
+    l.cmd "mv ants_output0GenericAffine.mat highres2standard.mat"
+    l.cmd "3dcopy ants_output1InverseWarp.nii.gz standard2highres_warp#{ext}"
+    l.cmd "3dcopy ants_output1Warp.nii.gz highres2standard_warp#{ext}"
+    l.cmd "3dcopy ants_outputInverseWarped.nii.gz standard2highres#{ext}"
+    l.cmd "3dcopy ants_outputWarped.nii.gz highres2standard#{ext}"
+    l.cmd "rm ants_output*"
     
+    l.info "Apply linear registration"
+    l.cmd "antsApplyTransforms -d 3 -o highres2standard_linear.nii.gz \
+      -t highres2standard.mat -r standard#{ext} -i highres#{ext}"
+    
+    l.info "Invert affine transformation"
+    l.cmd "antsApplyTransforms -d 3 -o Linear[standard2highres.mat,1] \
+      -t highres2standard.mat"
+    
+    l.info "Collapse transformations"    
+    l.cmd "antsApplyTransforms -d 3 -o [highres2standard_collapsed_warp#{ext},1] \
+      -t highres2standard_warp#{ext} -t highres2standard.mat \
+      -r standard#{ext}"
+    l.cmd "antsApplyTransforms -d 3 -o [standard2highres_collapsed_warp#{ext},1] \
+      -t standard2highres.mat -t standard2highres_warp#{ext} \
+      -r highres#{ext}"
   end
 
 
