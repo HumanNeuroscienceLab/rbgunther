@@ -112,13 +112,13 @@ def anat_segment!(cmdline = ARGV, l = nil)
   
   l.info "Get tissue priors"
   require 'gen_applywarp.rb'
-  gen_applywarp l, nil, :method => "fsl", :input => "#{DDIR}mni152_gray_prob.nii.gz", :reg => regdir.to_s, 
+  gen_applywarp l, nil, :input => "#{DDIR}mni152_gray_prob.nii.gz", :reg => regdir.to_s, 
     :warp => 'standard-to-highres', :output => "#{outdir}/prior_gray_prob.nii.gz", 
     :overwrite => overwrite, :ext => ext, :linear => true
-  gen_applywarp l, nil, :method => "fsl", :input => "#{DDIR}mni152_white_prob.nii.gz", :reg => regdir.to_s, 
+  gen_applywarp l, nil, :input => "#{DDIR}mni152_white_prob.nii.gz", :reg => regdir.to_s, 
     :warp => 'standard-to-highres', :output => "#{outdir}/prior_white_prob.nii.gz", 
     :overwrite => overwrite, :ext => ext, :linear => true
-  gen_applywarp l, nil, :method => "fsl", :input => "#{DDIR}mni152_csf_prob.nii.gz", :reg => regdir.to_s, 
+  gen_applywarp l, nil, :input => "#{DDIR}mni152_csf_prob.nii.gz", :reg => regdir.to_s, 
     :warp => 'standard-to-highres', :output => "#{outdir}/prior_csf_prob.nii.gz", 
     :overwrite => overwrite, :ext => ext, :linear => true
   
