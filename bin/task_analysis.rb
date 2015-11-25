@@ -77,7 +77,7 @@ def task_analysis!(cmdline = ARGV, l = nil)
     opt :stim, "Stimulus information: label file-path model", :type => :strings, :multi => true
     opt :stim_am1, "Stimulus (amplitude-duration modulated) information: label file-path model", :type => :strings, :multi => true
     opt :stim_am2, "Stimulus (amplitude-duration modulated) information: label file-path model", :type => :strings, :multi => true
-    opt :glt, "Contrast information (this is on top of any main effects of the stimulus information): label contrast", :type => :strings, :required => true, :multi => true
+    opt :glt, "Contrast information (this is on top of any main effects of the stimulus information): label contrast", :type => :strings, :multi => true
     
     opt :tr, "TR of input functionals", :type => :string, :required => true
     opt :polort, "Polort (can be -1 for nothing)", :type => :string, :default => "0"
