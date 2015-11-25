@@ -116,7 +116,7 @@ def task_analysis!(cmdline = ARGV, l = nil)
   global_t= opts[:global]
   
   stims   = opts[:stim]
-  stim_am1= opts[:stim_am1]
+  stims_am1 = opts[:stim_am1]
   stims_am2 = opts[:stim_am2]
   glts    = opts[:glt]
   
@@ -215,7 +215,7 @@ def task_analysis!(cmdline = ARGV, l = nil)
   end
   
   # Stimulus AM1 options
-  if stim_am1.count > 0
+  if stims_am1.count > 0
     stims_am1.each_with_index do |stim,i|
       nstims += 1
       label = stim[0]; timing_fname = stim[1]; model = stim[2]
