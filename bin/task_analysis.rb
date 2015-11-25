@@ -74,7 +74,7 @@ def task_analysis!(cmdline = ARGV, l = nil)
     opt :local, "Force local timing, see -local_times in 3dDeconvolve", :default => false
     opt :global, "Force global timing, see -global_times in 3dDeconvolve", :default => false
     
-    opt :stim, "Stimulus information: label file-path model", :type => :strings, :required => true, :multi => true
+    opt :stim, "Stimulus information: label file-path model", :type => :strings, :multi => true
     opt :stim_am1, "Stimulus (amplitude-duration modulated) information: label file-path model", :type => :strings, :multi => true
     opt :stim_am2, "Stimulus (amplitude-duration modulated) information: label file-path model", :type => :strings, :multi => true
     opt :glt, "Contrast information (this is on top of any main effects of the stimulus information): label contrast", :type => :strings, :required => true, :multi => true
