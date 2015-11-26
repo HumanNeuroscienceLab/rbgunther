@@ -328,6 +328,8 @@ def task_analysis!(cmdline = ARGV, l = nil)
   stim_labels = stims.collect{|stim| stim[0]}
   glt_labels = glts.collect{|glt| glt[0]}
   labels = stim_labels + glt_labels
+  labels = labels + stims_am1.collect{|stim| stim[0]} if stims_am1.count > 0
+  labels = labels + stims_am2.collect{|stim| stim[0]} if stims_am2.count > 0
   
   # split
   statdir = "#{outdir}/stats"
